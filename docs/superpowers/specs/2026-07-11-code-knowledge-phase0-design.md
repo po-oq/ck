@@ -1,29 +1,29 @@
-# Code Knowledge Phase 0 Design
+# Code Knowledge Phase 0 設計書
 
-## 1. Purpose
+## 1. 目的
 
-Phase 0 validates the technical assumptions that must hold before the Code Knowledge MVP is designed and implemented. It is part of the `ck` repository, but remains an isolated, rerunnable verification harness rather than production code.
+Phase 0では、Code KnowledgeのMVPを設計・実装する前に成立している必要がある技術的前提を検証する。Phase 0は`ck`リポジトリの一部として保持するが、本番コードではなく、繰り返し実行可能な独立した検証ハーネスとして扱う。
 
-The phase validates:
+検証対象は以下とする。
 
-- the bundled SQLite version and availability of FTS5 with the trigram tokenizer;
-- Japanese three-character FTS search and one-to-two-character LIKE fallback;
-- WAL and busy-timeout behavior under multi-process reads and writes;
-- MCP stdio Tool invocation from Cursor, GitHub Copilot in VS Code, and Claude Code;
-- framework-dependent single-file publication on the target Windows 11 machine, including native SQLite dependencies.
+- バンドル版SQLiteのバージョン、およびFTS5 trigramトークナイザの利用可否
+- 日本語3文字キーワードのFTS検索、および1〜2文字キーワードのLIKEフォールバック
+- 複数プロセスから読み書きした場合のWALとbusy timeoutの動作
+- Cursor、GitHub Copilot in VS Code、Claude CodeからのMCP stdio Tool呼び出し
+- 対象のWindows 11環境におけるframework-dependent単一ファイル発行（ネイティブSQLite依存物を含む）
 
-Phase 0 does not define the production domain model, database schema, application architecture, or production MCP Tools. Successful findings and test cases inform Phase 1; Phase 0 source code is not promoted directly into production projects.
+Phase 0では、本番用のドメインモデル、データベーススキーマ、Application層の構成、および本番用MCP Toolを定義しない。検証で得られた知見とテストケースはPhase 1へ反映するが、Phase 0のソースコードを本番プロジェクトへ直接昇格させない。
 
-## 2. Chosen Approach
+## 2. 採用方式
 
-Use one probe executable with multiple execution modes, plus a separate automated test project. Keeping all probes in one executable ensures that SQLite, MCP, concurrency, and publication checks exercise the same dependency graph and publish configuration.
+複数の実行モードを持つ単一のprobe実行ファイルと、独立した自動テストプロジェクトを採用する。すべてのprobeを同じ実行ファイルにまとめることで、SQLite、MCP、同時実行、発行の各検証が同一の依存関係と発行設定を使用することを保証する。
 
-Rejected alternatives:
+不採用とした方式は以下の通り。
 
-- Separate executables per technical concern make failures easy to isolate but can hide integration and packaging differences.
-- Building the production `Core`, `Application`, `Infrastructure`, and `Mcp` projects first would prematurely fix Phase 1 architecture before its assumptions are validated.
+- 技術要素ごとに実行ファイルを分ける方式は問題の切り分けが容易だが、統合時の依存関係やパッケージングの差異を見落とす可能性がある。
+- 本番用の`Core`、`Application`、`Infrastructure`、`Mcp`プロジェクトを先に作る方式は、技術的前提を検証する前にPhase 1のアーキテクチャを固定してしまう。
 
-## 3. Repository Layout
+## 3. リポジトリ構成
 
 ```text
 ck/
@@ -47,157 +47,157 @@ ck/
 └─ CodeKnowledge.Phase0.slnx
 ```
 
-`README.md` contains reproducible commands, client registration instructions, the manual verification checklist, and the final verification record.
+`README.md`には、再現可能な実行コマンド、各クライアントへの登録手順、手動検証チェックリスト、および最終的な検証記録を記載する。
 
-## 4. Probe Executable
+## 4. Probe実行ファイル
 
-`CodeKnowledge.Phase0` is a .NET 10 console executable. It supports three modes.
+`CodeKnowledge.Phase0`は.NET 10のコンソール実行ファイルとし、以下の3つのモードを提供する。
 
 ### 4.1 `self-check`
 
-`self-check` creates an isolated temporary SQLite database and performs the following checks in order:
+`self-check`は隔離された一時SQLiteデータベースを作成し、以下を順番に検証する。
 
-1. Read the bundled SQLite version and require version 3.34.0 or later.
-2. Create an FTS5 virtual table with `tokenize = "trigram"`.
-3. Insert fixed Japanese knowledge records, including `注文完了メール仕様`.
-4. Query `メール` through parameterized FTS `MATCH` and verify the expected record.
-5. Query `仕様` and `確認` through parameterized, escaped LIKE patterns and verify expected records.
-6. Merge FTS and LIKE result sets and verify the expected knowledge is retained.
-7. Enable and verify `journal_mode = WAL`, `busy_timeout = 5000`, and `foreign_keys = ON`.
+1. バンドル版SQLiteのバージョンを取得し、3.34.0以上であることを確認する。
+2. `tokenize = "trigram"`を指定してFTS5仮想テーブルを作成する。
+3. `注文完了メール仕様`を含む固定の日本語ナレッジレコードを登録する。
+4. `メール`をパラメータ化したFTS `MATCH`で検索し、期待するレコードを確認する。
+5. `仕様`と`確認`を、エスケープ済みかつパラメータ化したLIKEパターンで検索し、期待するレコードを確認する。
+6. FTSとLIKEの結果セットを統合し、期待するナレッジが保持されることを確認する。
+7. `journal_mode = WAL`、`busy_timeout = 5000`、`foreign_keys = ON`を有効化し、設定値を確認する。
 
-It prints one machine-readable JSON result to stdout. The result contains the executable version, SQLite version, individual check results, and an overall status.
+stdoutには機械可読なJSON結果を1件だけ出力する。結果には、実行ファイルのバージョン、SQLiteのバージョン、各検証項目の結果、および総合ステータスを含める。
 
 ### 4.2 `concurrency-worker`
 
-This mode is intended to be launched by the automated test suite. Each worker opens the same test database and repeatedly performs parameterized reads and transactional writes.
+このモードは自動テストから起動する。各workerは同一のテスト用データベースを開き、パラメータ化した読み取りとトランザクション内の書き込みを繰り返す。
 
-The parent test launches multiple worker processes, waits for all of them to finish, and then verifies:
+親テストは複数のworkerプロセスを起動し、すべての終了を待った後に以下を確認する。
 
-- no worker failed with a lock or timeout error;
-- the final row count matches the expected successful writes;
-- unique operation identifiers reveal neither missing nor duplicated writes;
-- reads return well-formed records;
-- WAL mode remains active.
+- lockまたはtimeoutエラーで失敗したworkerがない
+- 最終行数が成功した書き込みの期待件数と一致する
+- 一意な操作IDを検査し、書き込みの欠落や重複がない
+- 読み取ったレコードが破損していない
+- WALモードが維持されている
 
-The exact worker and iteration counts are test parameters. Defaults must create overlapping activity while remaining stable on a developer workstation. Tests must not depend on timing alone to prove overlap; workers use an explicit start barrier controlled by the parent test.
+worker数と反復回数はテストパラメータとする。既定値は、開発用PCで安定して動作しつつ、処理が重なる値とする。処理の重なりをタイミングだけで証明せず、親テストが制御する明示的な開始バリアを使用する。
 
 ### 4.3 `mcp`
 
-This mode runs a minimal MCP server over stdio and exposes one Tool named `phase0_probe`. The Tool returns:
+このモードはstdio上で最小のMCPサーバーを起動し、`phase0_probe`というToolを1つだけ公開する。Toolは以下を返す。
 
-- `status` with value `ok`;
-- executable version;
-- process ID;
-- SQLite version;
-- server timestamp in UTC.
+- 値が`ok`である`status`
+- 実行ファイルのバージョン
+- プロセスID
+- SQLiteのバージョン
+- UTCのサーバー時刻
 
-It contains no production business Tools. With no command-line mode specified, the executable starts in `mcp` mode so the published EXE can be registered directly in each client.
+本番用の業務Toolは実装しない。コマンドラインでモードを省略した場合は`mcp`モードで起動し、発行済みEXEを各クライアントへ直接登録できるようにする。
 
-In `mcp` mode, stdout is reserved exclusively for MCP protocol traffic. Diagnostics and logs are written to stderr.
+`mcp`モードではstdoutをMCPプロトコル通信専用とし、診断情報とログはstderrへ出力する。
 
-## 5. Data and Resource Isolation
+## 5. データとリソースの隔離
 
-Every automated test receives a unique temporary directory and database path. Tests do not use `%LOCALAPPDATA%\CodeKnowledge\knowledge.db` and cannot affect future production data.
+各自動テストに一意な一時ディレクトリとデータベースパスを割り当てる。テストでは`%LOCALAPPDATA%\CodeKnowledge\knowledge.db`を使用せず、将来の本番データへ影響を与えない。
 
-SQLite connections explicitly enable the required pragmas instead of relying on process-global state. Test data is deterministic and contains only synthetic records. Temporary databases, WAL files, shared-memory files, and publish directories are removed during test cleanup. Cleanup failures are reported without masking the original test result.
+SQLite接続では、プロセス全体の状態に依存せず、必要なPRAGMAを接続ごとに明示的に設定する。テストデータは固定された合成データのみとする。テスト終了時に、一時データベース、WALファイル、共有メモリファイル、発行ディレクトリを削除する。クリーンアップに失敗した場合は、元のテスト結果を隠さずに失敗内容を報告する。
 
-## 6. Search Validation
+## 6. 検索検証
 
-The search probe verifies the constraints established by the requirements document without implementing the full Phase 1 search service.
+検索probeでは、Phase 1の完全な検索サービスを実装せず、要件定義書で確定した制約だけを検証する。
 
-Required cases are:
+必須の検証ケースは以下とする。
 
-- three-or-more Unicode code points use FTS5 trigram MATCH;
-- one-to-two Unicode code points use LIKE;
-- FTS terms are quoted so a term such as `sui-memory` is not interpreted as an operator expression;
-- LIKE terms escape `\`, `%`, and `_` and use `ESCAPE '\'`;
-- SQL values are passed as parameters;
-- FTS and LIKE results can be merged without losing a record that matches either route.
+- Unicodeコードポイント数が3以上のキーワードはFTS5 trigram MATCHを使用する。
+- Unicodeコードポイント数が1〜2のキーワードはLIKEを使用する。
+- FTSキーワードを引用符で囲み、`sui-memory`のような語が演算子を含む式として解釈されないようにする。
+- LIKEキーワード中の`\`、`%`、`_`をエスケープし、`ESCAPE '\'`を指定する。
+- SQLへ渡す値はパラメータとして指定する。
+- FTSまたはLIKEのいずれかに一致したレコードを失わずに両結果を統合できる。
 
-The probe uses only the minimum columns and SQL necessary to validate these assumptions. It does not predefine the production schema or ranking algorithm.
+probeでは、これらの前提を検証するために必要な最小限のカラムとSQLだけを使用する。本番用のスキーマやランキングアルゴリズムは先に定義しない。
 
-## 7. Automated Verification
+## 7. 自動検証
 
-The automated suite must cover:
+自動テストでは以下を必須とする。
 
-- bundled SQLite version;
-- FTS5 and trigram virtual-table creation;
-- Japanese three-character FTS search;
-- Japanese two-character LIKE search;
-- safe handling of hyphens and LIKE metacharacters;
-- FTS and LIKE result merging;
-- WAL, busy timeout, and foreign-key settings;
-- concurrent multi-process reads and writes;
-- MCP initialization and `phase0_probe` invocation using a protocol test client;
-- framework-dependent single-file publication followed by execution of the published EXE in `self-check` mode;
-- absence of ordinary logs on stdout while running in `mcp` mode.
+- バンドル版SQLiteのバージョン
+- FTS5とtrigram仮想テーブルの作成
+- 日本語3文字キーワードのFTS検索
+- 日本語2文字キーワードのLIKE検索
+- ハイフンおよびLIKEメタ文字の安全な処理
+- FTSとLIKEの検索結果統合
+- WAL、busy timeout、foreign keysの設定
+- 複数プロセスによる同時読み書き
+- プロトコルテストクライアントを使用したMCP初期化と`phase0_probe`呼び出し
+- framework-dependent単一ファイル発行後、発行済みEXEの`self-check`を実行するスモークテスト
+- `mcp`モードのstdoutへ通常ログが混入しないこと
 
-Tests exercise the public probe operations. Concurrency and publish tests execute child processes rather than replacing operating-system behavior with mocks.
+テストはprobeの公開操作を実行する。同時実行テストと発行テストでは、OSや発行処理をモックに置き換えず、実際の子プロセスを起動する。
 
-## 8. Manual MCP Client Verification
+## 8. MCPクライアントの手動検証
 
-The published EXE is registered separately with:
+発行済みEXEを以下のクライアントへ個別に登録する。
 
-1. Cursor;
-2. GitHub Copilot in VS Code;
-3. Claude Code.
+1. Cursor
+2. GitHub Copilot in VS Code
+3. Claude Code
 
-For each client, a human invokes `phase0_probe` and records in `spikes/phase0/README.md`:
+各クライアントで人間が`phase0_probe`を呼び出し、`spikes/phase0/README.md`へ以下を記録する。
 
-- client name and version;
-- verification date;
-- command or configuration used;
-- returned executable and SQLite versions;
-- pass or fail;
-- observations or client-specific deviations.
+- クライアント名とバージョン
+- 検証日
+- 使用したコマンドまたは設定
+- 返却された実行ファイルとSQLiteのバージョン
+- 成否
+- 所見またはクライアント固有の差異
 
-All three successful invocations are required. A protocol-level automated MCP test does not replace these client checks.
+3クライアントすべてで呼び出しに成功することを必須とする。プロトコルレベルのMCP自動テストを、これらのクライアント検証の代替にしてはならない。
 
-## 9. Publication Verification
+## 9. 発行検証
 
-The probe is published for Windows as a framework-dependent, single-file .NET 10 executable. The publish smoke test runs the published EXE in `self-check` mode rather than the build output.
+probeは、Windows向けのframework-dependent単一ファイル.NET 10実行ファイルとして発行する。発行スモークテストでは、ビルド出力ではなく、発行済みEXEを`self-check`モードで実行する。
 
-The verification record lists every produced file. If native SQLite components are emitted beside the EXE, they are treated as required distribution artifacts and documented explicitly. The phase succeeds when the documented artifact set runs on the target machine without administrator rights or an installer; an EXE-only output is not required if the SQLite runtime legitimately requires adjacent native files.
+検証記録には、生成されたファイルをすべて列挙する。ネイティブSQLiteコンポーネントがEXEと同じディレクトリへ生成された場合は、それらを必須配布物として明記する。管理者権限やインストーラーを必要とせず、記録した成果物一式が対象マシンで動作すれば成功とする。SQLiteランタイムが隣接するネイティブファイルを必要とする場合、EXEだけの出力は必須としない。
 
-## 10. Error Handling and Output Contracts
+## 10. エラー処理と出力契約
 
-Non-MCP modes return deterministic process exit codes:
+MCP以外のモードでは、以下の決定的なプロセス終了コードを返す。
 
-| Exit code | Meaning |
+| 終了コード | 意味 |
 |---:|---|
-| 0 | Every requested check passed |
-| 1 | One or more technical checks failed |
-| 2 | Command-line arguments are invalid |
-| 3 | An unexpected execution error occurred |
+| 0 | 要求されたすべての検証に成功した |
+| 1 | 1件以上の技術検証に失敗した |
+| 2 | コマンドライン引数が不正である |
+| 3 | 予期しない実行エラーが発生した |
 
-`self-check` and `concurrency-worker` emit a single JSON result to stdout and diagnostics to stderr. A failed check includes a stable check identifier and a concise failure reason. Secret values, source code, connection strings, and credentials are never logged.
+`self-check`と`concurrency-worker`はstdoutへJSON結果を1件だけ出力し、診断情報はstderrへ出力する。失敗した検証項目には、安定した検証IDと簡潔な失敗理由を含める。秘密情報、ソースコード、接続文字列、認証情報をログへ出力しない。
 
-The MCP server reports Tool failures through MCP-compatible error responses and preserves stdout for protocol traffic. An initialization failure is written to stderr and terminates the process with a nonzero exit code.
+MCPサーバーはToolの失敗をMCP互換のエラーレスポンスとして返し、stdoutをプロトコル通信専用に維持する。初期化に失敗した場合はstderrへ出力し、0以外の終了コードでプロセスを終了する。
 
-## 11. Phase Completion Gate
+## 11. Phase完了ゲート
 
-Phase 0 is complete only when all of the following are true:
+Phase 0は、以下をすべて満たした場合にのみ完了とする。
 
-1. All automated tests pass.
-2. The published executable passes `self-check`.
-3. Cursor invokes `phase0_probe` successfully.
-4. GitHub Copilot in VS Code invokes `phase0_probe` successfully.
-5. Claude Code invokes `phase0_probe` successfully.
-6. The complete distribution artifact set is recorded.
-7. No observed result contradicts a technical assumption in the requirements document.
+1. すべての自動テストが成功する。
+2. 発行済み実行ファイルの`self-check`が成功する。
+3. Cursorから`phase0_probe`を正常に呼び出せる。
+4. GitHub Copilot in VS Codeから`phase0_probe`を正常に呼び出せる。
+5. Claude Codeから`phase0_probe`を正常に呼び出せる。
+6. 配布に必要な成果物一式が記録されている。
+7. 要件定義書の技術的前提に反する検証結果がない。
 
-If any assumption fails, Phase 1 is blocked. The implementation note records the failed assumption, evidence, and viable alternatives. The requirements document is revised and approved before Phase 1 planning continues. The spike must not hide a failed assumption with an unapproved fallback.
+いずれかの前提が成立しない場合は、Phase 1への移行を停止する。失敗した前提、根拠、実行可能な代替案を実装ノートへ記録し、Phase 1の計画へ進む前に要件定義書を改訂して承認を得る。承認されていないフォールバックによって、成立しなかった前提を隠してはならない。
 
-## 12. Non-Goals
+## 12. 対象外
 
-Phase 0 does not include:
+Phase 0では以下を実装しない。
 
-- the production project resolver;
-- the production database schema or migrations;
-- Knowledge, KnowledgeVersion, Evidence, or KnowledgeDiff models;
-- production search ranking;
-- freshness validation or Git integration;
-- production MCP Tools;
-- CLI product functionality;
-- automatic client-specific installation or configuration;
-- promotion of spike source files into Phase 1.
+- 本番用のプロジェクト解決
+- 本番用のデータベーススキーマとマイグレーション
+- Knowledge、KnowledgeVersion、Evidence、KnowledgeDiffの各モデル
+- 本番用の検索ランキング
+- 鮮度検証とGit連携
+- 本番用MCP Tool
+- CLI製品機能
+- クライアント固有のインストールまたは設定の自動化
+- spikeのソースファイルをPhase 1へ直接昇格すること
