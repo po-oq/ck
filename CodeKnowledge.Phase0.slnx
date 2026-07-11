@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/spikes/" />
+  <Folder Name="/spikes/phase0/">
+    <Project Path="spikes/phase0/CodeKnowledge.Phase0.Tests/CodeKnowledge.Phase0.Tests.csproj" />
+    <Project Path="spikes/phase0/CodeKnowledge.Phase0/CodeKnowledge.Phase0.csproj" />
+  </Folder>
+</Solution>
