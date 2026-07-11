@@ -2,7 +2,7 @@
 
 このディレクトリは、Code Knowledge本実装の前提となるSQLite、MCP stdio、複数プロセス同時実行、およびWindows向け単一ファイル発行を検証するspikeである。Phase 0のコードを本番コードへ直接昇格させない。
 
-自動検証とClaude Codeの実機検証が完了している。CursorとGitHub Copilot in VS Codeの実機検証は、2026-07-11のユーザー判断により検証対象外とした（Deviations参照）。残る完了条件はユーザーによるPhase 0完了とPhase 1移行の承認である。
+自動検証とClaude Codeの実機検証が完了している。CursorとGitHub Copilot in VS Codeの実機検証は、2026-07-11のユーザー判断により検証対象外とした（Deviations参照）。2026-07-11、ユーザーがPhase 0の完了とPhase 1への移行を承認し、**Phase 0は完了した**。
 
 ## 実行環境と技術前提
 
@@ -176,6 +176,6 @@ Claude Codeから`phase0_probe`を明示的に呼び出し、`status = "ok"`、E
 - [x] Claude Codeでphase0_probe成功
 - [x] 発行成果物一覧を記録
 - [x] Deviationsが「なし」、または要件改訂が承認済み
-- [ ] ユーザーがPhase 0完了とPhase 1移行を承認
+- [x] ユーザーがPhase 0完了とPhase 1移行を承認（2026-07-11）
 
 3クライアントの結果が揃ったらこのREADMEを更新し、`docs: record phase 0 client verification`として自動検証記録とは別にコミットする。全完了条件とユーザー承認が揃うまで、Phase 1の設計・実装を開始しない。
