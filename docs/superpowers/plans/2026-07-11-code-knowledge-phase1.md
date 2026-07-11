@@ -68,7 +68,7 @@
 - Consumes: `Directory.Build.props`、`Directory.Packages.props`（既存）
 - Produces: ビルド可能な空の3+3プロジェクト
 
-- [ ] **Step 1: プロジェクトを作成し参照を張る**
+- [x] **Step 1: プロジェクトを作成し参照を張る**
 
 Run:
 
@@ -90,7 +90,7 @@ dotnet add tests/CodeKnowledge.Mcp.Tests/CodeKnowledge.Mcp.Tests.csproj referenc
 
 Expected: 6プロジェクトがソリューションへ追加される。テンプレートが生成した`Class1.cs`は削除する。
 
-- [ ] **Step 2: csprojへパッケージ参照と発行設定を書く**
+- [x] **Step 2: csprojへパッケージ参照と発行設定を書く**
 
 `src/CodeKnowledge.Infrastructure/CodeKnowledge.Infrastructure.csproj`:
 
@@ -134,12 +134,12 @@ Expected: 6プロジェクトがソリューションへ追加される。テン
 
 テストプロジェクト3つには`Microsoft.NET.Test.Sdk`と`xunit.v3`の`PackageReference`を設定する（バージョンは`Directory.Packages.props`が供給。テンプレート生成csprojにバージョン属性が付いていたら削除する）。`CodeKnowledge.Core.csproj`はパッケージ参照なしのclasslibのままとする。
 
-- [ ] **Step 3: ビルドとテストが通ることを確認する**
+- [x] **Step 3: ビルドとテストが通ることを確認する**
 
 Run: `dotnet build CodeKnowledge.slnx && dotnet test CodeKnowledge.slnx`
 Expected: ビルド成功、テンプレートのプレースホルダーテストが成功（または0件で成功）。
 
-- [ ] **Step 4: コミット**
+- [x] **Step 4: コミット**
 
 ```bash
 git add CodeKnowledge.slnx src/ tests/
@@ -161,7 +161,7 @@ git commit -m "chore: scaffold phase 1 solution with core, infrastructure, mcp p
 - Consumes: なし
 - Produces: `Confidence.TryParse(string?, out Confidence)`、`ConfidenceExtensions.ToDbValue(this Confidence)`、`RelationKind.All`（9種別の文字列集合）、`CodeKnowledgeException(string code, string message)`、ドメインrecord群
 
-- [ ] **Step 1: 失敗するテストを書く**
+- [x] **Step 1: 失敗するテストを書く**
 
 `tests/CodeKnowledge.Core.Tests/ConfidenceTests.cs`:
 
@@ -203,12 +203,12 @@ public sealed class ConfidenceTests
 }
 ```
 
-- [ ] **Step 2: テストが失敗することを確認する**
+- [x] **Step 2: テストが失敗することを確認する**
 
 Run: `dotnet test tests/CodeKnowledge.Core.Tests`
 Expected: コンパイルエラー（`Confidence`未定義）で失敗。
 
-- [ ] **Step 3: 最小実装を書く**
+- [x] **Step 3: 最小実装を書く**
 
 `src/CodeKnowledge.Core/Domain/Confidence.cs`:
 
@@ -350,12 +350,12 @@ public sealed class CodeKnowledgeException(string code, string message) : Except
 }
 ```
 
-- [ ] **Step 4: テストが成功することを確認する**
+- [x] **Step 4: テストが成功することを確認する**
 
 Run: `dotnet test tests/CodeKnowledge.Core.Tests`
 Expected: PASS。
 
-- [ ] **Step 5: コミット**
+- [x] **Step 5: コミット**
 
 ```bash
 git add src/CodeKnowledge.Core tests/CodeKnowledge.Core.Tests
@@ -377,7 +377,7 @@ git commit -m "feat: add core domain model and error contract"
 - Consumes: `CodeKnowledgeException`
 - Produces: `DatabasePathResolver.Resolve() -> string`、`SqliteConnectionFactory(string dbPath).Open() -> SqliteConnection`（PRAGMA適用済み）、`MigrationRunner.Apply(SqliteConnectionFactory factory, string dbPath)`
 
-- [ ] **Step 1: 失敗するテストを書く**
+- [x] **Step 1: 失敗するテストを書く**
 
 `tests/CodeKnowledge.Infrastructure.Tests/TestDatabase.cs`:
 
@@ -543,12 +543,12 @@ public sealed class DatabasePathResolverTests
 }
 ```
 
-- [ ] **Step 2: テストが失敗することを確認する**
+- [x] **Step 2: テストが失敗することを確認する**
 
 Run: `dotnet test tests/CodeKnowledge.Infrastructure.Tests`
 Expected: コンパイルエラーで失敗。
 
-- [ ] **Step 3: 最小実装を書く**
+- [x] **Step 3: 最小実装を書く**
 
 `src/CodeKnowledge.Infrastructure/Database/DatabasePathResolver.cs`:
 
@@ -760,12 +760,12 @@ public static class MigrationRunner
 }
 ```
 
-- [ ] **Step 4: テストが成功することを確認する**
+- [x] **Step 4: テストが成功することを確認する**
 
 Run: `dotnet test tests/CodeKnowledge.Infrastructure.Tests`
 Expected: PASS（7テスト）。
 
-- [ ] **Step 5: コミット**
+- [x] **Step 5: コミット**
 
 ```bash
 git add src/CodeKnowledge.Infrastructure tests/CodeKnowledge.Infrastructure.Tests
@@ -803,7 +803,7 @@ public interface IGitRepository
 }
 ```
 
-- [ ] **Step 1: テスト用Gitリポジトリヘルパーと失敗するテストを書く**
+- [x] **Step 1: テスト用Gitリポジトリヘルパーと失敗するテストを書く**
 
 `tests/CodeKnowledge.Infrastructure.Tests/TestGitRepo.cs`:
 
@@ -957,12 +957,12 @@ public sealed class GitCliRepositoryTests
 }
 ```
 
-- [ ] **Step 2: テストが失敗することを確認する**
+- [x] **Step 2: テストが失敗することを確認する**
 
 Run: `dotnet test tests/CodeKnowledge.Infrastructure.Tests`
 Expected: コンパイルエラーで失敗。
 
-- [ ] **Step 3: 最小実装を書く**
+- [x] **Step 3: 最小実装を書く**
 
 `src/CodeKnowledge.Core/Git/IGitRepository.cs`:
 
@@ -1119,12 +1119,12 @@ public sealed class GitCliRepository : IGitRepository
 }
 ```
 
-- [ ] **Step 4: テストが成功することを確認する**
+- [x] **Step 4: テストが成功することを確認する**
 
 Run: `dotnet test tests/CodeKnowledge.Infrastructure.Tests`
 Expected: PASS。
 
-- [ ] **Step 5: コミット**
+- [x] **Step 5: コミット**
 
 ```bash
 git add src/CodeKnowledge.Core/Git src/CodeKnowledge.Infrastructure/Git tests/CodeKnowledge.Infrastructure.Tests
