@@ -1,10 +1,13 @@
+using System.Text.Json.Serialization;
+
 namespace CodeKnowledge.Core.Domain;
 
+[JsonConverter(typeof(JsonStringEnumConverter<Confidence>))]
 public enum Confidence
 {
-    High,
-    Medium,
-    Low,
+    [JsonStringEnumMemberName("high")] High,
+    [JsonStringEnumMemberName("medium")] Medium,
+    [JsonStringEnumMemberName("low")] Low,
 }
 
 public static class ConfidenceParser

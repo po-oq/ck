@@ -32,4 +32,18 @@ public sealed class ConfidenceTests
         Assert.Equal("medium", Confidence.Medium.ToDbValue());
         Assert.Equal("low", Confidence.Low.ToDbValue());
     }
+
+    [Fact]
+    public void Serializes_as_lowercase_string_in_json()
+    {
+        Assert.Equal("\"high\"", System.Text.Json.JsonSerializer.Serialize(Confidence.High));
+        Assert.Equal("\"medium\"", System.Text.Json.JsonSerializer.Serialize(Confidence.Medium));
+        Assert.Equal("\"low\"", System.Text.Json.JsonSerializer.Serialize(Confidence.Low));
+    }
+
+    [Fact]
+    public void Deserializes_from_lowercase_string_in_json()
+    {
+        Assert.Equal(Confidence.High, System.Text.Json.JsonSerializer.Deserialize<Confidence>("\"high\""));
+    }
 }
