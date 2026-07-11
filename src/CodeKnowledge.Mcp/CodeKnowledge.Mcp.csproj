@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>CodeKnowledge.Mcp</RootNamespace>
+    <AssemblyName>CodeKnowledge.Mcp</AssemblyName>
+    <PublishSingleFile Condition="'$(RuntimeIdentifier)' != ''">true</PublishSingleFile>
+    <SelfContained>false</SelfContained>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="ModelContextProtocol" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CodeKnowledge.Core\CodeKnowledge.Core.csproj" />
+    <ProjectReference Include="..\CodeKnowledge.Infrastructure\CodeKnowledge.Infrastructure.csproj" />
+  </ItemGroup>
+</Project>
