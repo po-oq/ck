@@ -1,5 +1,6 @@
 using CodeKnowledge.Core.Errors;
 using CodeKnowledge.Infrastructure.Database;
+using Microsoft.Data.Sqlite;
 
 namespace CodeKnowledge.Infrastructure.Tests;
 
@@ -8,6 +9,16 @@ public sealed class MigrationRunnerTests
     private static long Scalar(TestDatabase db, string sql)
     {
         using var connection = db.Factory.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        return Convert.ToInt64(command.ExecuteScalar());
+    }
+
+    private static long ScalarOnFile(string databasePath, string sql)
+    {
+        using var connection = new SqliteConnection(
+            $"Data Source={databasePath};Mode=ReadOnly;Pooling=False");
+        connection.Open();
         using var command = connection.CreateCommand();
         command.CommandText = sql;
         return Convert.ToInt64(command.ExecuteScalar());
@@ -31,6 +42,16 @@ public sealed class MigrationRunnerTests
             Assert.Equal(1, Scalar(db,
                 $"SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = '{table}';"));
         }
+
+        foreach (var index in new[]
+        {
+            "idx_knowledge_project", "idx_versions_knowledge", "idx_evidence_version",
+            "idx_facts_version", "idx_inferences_version", "idx_relations_version",
+        })
+        {
+            Assert.Equal(1, Scalar(db,
+                $"SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = '{index}';"));
+        }
     }
 
     [Fact]
@@ -49,12 +70,20 @@ public sealed class MigrationRunnerTests
         using (var connection = db.Factory.Open())
         {
             using var command = connection.CreateCommand();
-            command.CommandText = "CREATE TABLE pre_existing (id INTEGER);";
+            command.CommandText = """
+                CREATE TABLE pre_existing (id INTEGER);
+                INSERT INTO pre_existing (id) VALUES (42);
+                """;
             command.ExecuteNonQuery();
         }
 
         MigrationRunner.Apply(db.Factory, db.DbPath);
-        Assert.True(File.Exists(db.DbPath + ".bak-0"));
+
+        var backupPath = db.DbPath + ".bak-0";
+        Assert.True(File.Exists(backupPath));
+        Assert.Equal(1, ScalarOnFile(backupPath,
+            "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'pre_existing';"));
+        Assert.Equal(1, ScalarOnFile(backupPath, "SELECT COUNT(*) FROM pre_existing;"));
     }
 
     [Fact]
@@ -91,5 +120,7 @@ public sealed class MigrationRunnerTests
         Assert.Equal("wal", (string)command.ExecuteScalar()!);
         command.CommandText = "PRAGMA foreign_keys;";
         Assert.Equal(1L, Convert.ToInt64(command.ExecuteScalar()));
+        command.CommandText = "PRAGMA busy_timeout;";
+        Assert.Equal(5000L, Convert.ToInt64(command.ExecuteScalar()));
     }
 }

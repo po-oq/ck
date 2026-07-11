@@ -68,6 +68,7 @@ public static class MigrationRunner
             text TEXT NOT NULL,
             sort_order INTEGER NOT NULL
         );
+        CREATE INDEX idx_facts_version ON facts(knowledge_version_id);
 
         CREATE TABLE fact_evidence (
             fact_id TEXT NOT NULL REFERENCES facts(id) ON DELETE CASCADE,
@@ -83,6 +84,7 @@ public static class MigrationRunner
             reason TEXT NOT NULL,
             sort_order INTEGER NOT NULL
         );
+        CREATE INDEX idx_inferences_version ON inferences(knowledge_version_id);
 
         CREATE TABLE inference_evidence (
             inference_id TEXT NOT NULL REFERENCES inferences(id) ON DELETE CASCADE,
@@ -99,6 +101,7 @@ public static class MigrationRunner
                 'calls', 'implements', 'inherits', 'reads', 'writes',
                 'publishes', 'subscribes', 'configured-by', 'tested-by'))
         );
+        CREATE INDEX idx_relations_version ON relations(knowledge_version_id);
 
         CREATE VIRTUAL TABLE knowledge_fts USING fts5(
             title, original_question, summary, facts, inferences, tags,
@@ -122,7 +125,7 @@ public static class MigrationRunner
 
         var isFreshDatabase = currentVersion == 0 && CountObjects(connection) == 0;
         if (!isFreshDatabase)
-            File.Copy(databasePath, $"{databasePath}.bak-{currentVersion}", overwrite: true);
+            CreateBackup(connection, $"{databasePath}.bak-{currentVersion}");
 
         using var transaction = connection.BeginTransaction(deferred: false);
         // 排他トランザクション開始後に再確認し、同時起動した他プロセスの適用済みを検知する
@@ -139,6 +142,19 @@ public static class MigrationRunner
         }
 
         transaction.Commit();
+    }
+
+    private static void CreateBackup(SqliteConnection connection, string backupPath)
+    {
+        // File.Copy はWALに残る未チェックポイントのコミット済みデータを取りこぼすため、
+        // VACUUM INTO でWAL状態に関わらず一貫したスナップショットを生成する。
+        // VACUUM INTO は既存ファイルへの書き込みを拒否するので先に削除する。
+        // (VACUUM はトランザクション内で実行できないため BeginTransaction より前に呼ぶこと)
+        File.Delete(backupPath);
+        using var command = connection.CreateCommand();
+        command.CommandText = "VACUUM INTO @path;";
+        command.Parameters.AddWithValue("@path", backupPath);
+        command.ExecuteNonQuery();
     }
 
     private static long GetUserVersion(SqliteConnection connection)
