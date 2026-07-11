@@ -6,13 +6,17 @@ public sealed class CommandLineTests
     public void Parse_WithNoArguments_DefaultsToMcp() =>
         Assert.Equal(ProbeMode.Mcp, CommandLine.Parse([]).Mode);
 
+    [Fact]
+    public void ProbeMode_IsInternal() =>
+        Assert.False(typeof(ProbeMode).IsPublic);
+
     [Theory]
-    [InlineData("mcp", ProbeMode.Mcp)]
-    [InlineData("self-check", ProbeMode.SelfCheck)]
-    [InlineData("concurrency-worker", ProbeMode.ConcurrencyWorker)]
-    [InlineData("unknown", ProbeMode.Invalid)]
-    public void Parse_SelectsExpectedMode(string argument, ProbeMode expected)
+    [InlineData("mcp", "Mcp")]
+    [InlineData("self-check", "SelfCheck")]
+    [InlineData("concurrency-worker", "ConcurrencyWorker")]
+    [InlineData("unknown", "Invalid")]
+    public void Parse_SelectsExpectedMode(string argument, string expected)
     {
-        Assert.Equal(expected, CommandLine.Parse([argument]).Mode);
+        Assert.Equal(expected, CommandLine.Parse([argument]).Mode.ToString());
     }
 }

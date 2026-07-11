@@ -6,13 +6,13 @@
 
 **アーキテクチャ:** `spikes/phase0/CodeKnowledge.Phase0`を単一のprobe実行ファイルとし、`self-check`、`concurrency-worker`、`mcp`の3モードを提供する。`CodeKnowledge.Phase0.Tests`は公開されたprobe操作、実プロセス、発行済みEXEを検証し、手動の3クライアント検証だけを`README.md`の承認ゲートとして残す。
 
-**技術スタック:** Windows 11、.NET SDK 10.0.201、`net10.0`、C#、Microsoft.Data.Sqlite 10.0.9、ModelContextProtocol 1.4.1、Microsoft.Extensions.Hosting 10.0.9、xunit.v3 3.2.2、Microsoft.NET.Test.Sdk 18.7.0、SQLite FTS5
+**技術スタック:** Windows 11、.NET SDK 10.0.201、`net10.0`、C#、Microsoft.Data.Sqlite 10.0.9、SQLitePCLRaw.bundle_e_sqlite3 3.0.3、ModelContextProtocol 1.4.1、Microsoft.Extensions.Hosting 10.0.9、xunit.v3 3.2.2、Microsoft.NET.Test.Sdk 18.7.0、SQLite FTS5
 
 ## 全体制約
 
 - 対象OSはWindows 11、Target Frameworkは`net10.0`とする。
-- NuGetパッケージは安定版のみを使用し、上記バージョンへ固定する。preview版へ変更しない。
-- SQLiteは`Microsoft.Data.Sqlite`が同梱するSQLitePCLRaw bundleを使用し、外部SQLite拡張DLLを追加しない。
+- NuGetパッケージは安定版のみを使用し、上記バージョンへ固定する。preview版へ変更しない。SQLitePCLRaw bundleは`SQLitePCLRaw.bundle_e_sqlite3` 3.0.3へ固定する。
+- SQLiteは`Microsoft.Data.Sqlite`とprobeから直接参照する`SQLitePCLRaw.bundle_e_sqlite3`を使用し、外部SQLite拡張DLLを追加しない。
 - MCP transportはstdioのみとし、`mcp`モードのstdoutにはMCPプロトコル以外を一切出力しない。
 - テストデータは一時ディレクトリへ隔離し、`%LOCALAPPDATA%\CodeKnowledge\knowledge.db`へ接続しない。
 - 同時実行テストと発行スモークテストはモックではなく実プロセスを使用する。
@@ -110,6 +110,7 @@ Expected: 2プロジェクトがsolutionへ追加される。
   </PropertyGroup>
   <ItemGroup>
     <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.9" />
+    <PackageVersion Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.3" />
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.9" />
     <PackageVersion Include="ModelContextProtocol" Version="1.4.1" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.7.0" />
@@ -118,7 +119,7 @@ Expected: 2プロジェクトがsolutionへ追加される。
 </Project>
 ```
 
-両`csproj`からテンプレートが追加したバージョン属性を削除し、probeへ`Microsoft.Data.Sqlite`、`Microsoft.Extensions.Hosting`、`ModelContextProtocol`、テストへ`Microsoft.NET.Test.Sdk`と`xunit.v3`を追加する。probeの`csproj`には以下も追加する。
+両`csproj`からテンプレートが追加したバージョン属性を削除し、probeへ`Microsoft.Data.Sqlite`、`SQLitePCLRaw.bundle_e_sqlite3`、`Microsoft.Extensions.Hosting`、`ModelContextProtocol`、テストへ`Microsoft.NET.Test.Sdk`と`xunit.v3`を追加する。`SQLitePCLRaw.bundle_e_sqlite3`はprobeから直接参照し、中央管理した3.0.3を解決させる。probeの`csproj`には以下も追加する。
 
 ```xml
 <ItemGroup>
@@ -950,6 +951,7 @@ git status --short
 - MCP C# SDK公式リポジトリ: <https://github.com/modelcontextprotocol/csharp-sdk>
 - ModelContextProtocol 1.4.1: <https://www.nuget.org/packages/ModelContextProtocol/1.4.1>
 - Microsoft.Data.Sqlite 10.0.9: <https://www.nuget.org/packages/Microsoft.Data.Sqlite/10.0.9>
+- SQLitePCLRaw.bundle_e_sqlite3 3.0.3: <https://www.nuget.org/packages/SQLitePCLRaw.bundle_e_sqlite3/3.0.3>
 - Microsoft.Extensions.Hosting 10.0.9: <https://www.nuget.org/packages/Microsoft.Extensions.Hosting/10.0.9>
 - xunit.v3 3.2.2: <https://www.nuget.org/packages/xunit.v3/3.2.2>
 - Microsoft.NET.Test.Sdk 18.7.0: <https://www.nuget.org/packages/Microsoft.NET.Test.Sdk/18.7.0>

@@ -1,6 +1,6 @@
 namespace CodeKnowledge.Phase0;
 
-public enum ProbeMode { Mcp, SelfCheck, ConcurrencyWorker, Invalid }
+internal enum ProbeMode { Mcp, SelfCheck, ConcurrencyWorker, Invalid }
 
 internal sealed record CommandSelection(ProbeMode Mode, string[] Arguments);
 
