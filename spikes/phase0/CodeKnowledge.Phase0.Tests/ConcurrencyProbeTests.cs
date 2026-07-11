@@ -6,6 +6,50 @@ namespace CodeKnowledge.Phase0.Tests;
 public sealed class ConcurrencyProbeTests
 {
     [Fact]
+    public async Task Process_runner_cancellation_terminates_the_waiting_child()
+    {
+        using var workspace = new TestWorkspace();
+        var databasePath = workspace.PathFor("cancel.db");
+        CreateOperationsTable(databasePath);
+        var missingStartFile = workspace.PathFor("never-created.signal");
+        var started = new TaskCompletionSource<int>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(
+            TestContext.Current.CancellationToken);
+
+        var run = ProcessRunner.RunAsync(
+            "dotnet",
+            [
+                typeof(CommandLine).Assembly.Location,
+                "concurrency-worker",
+                "--database", databasePath,
+                "--worker-id", "99",
+                "--iterations", "1",
+                "--start-file", missingStartFile
+            ],
+            workspace.Root,
+            cancellation.Token,
+            processId => started.TrySetResult(processId));
+
+        var processId = await started.Task.WaitAsync(
+            TimeSpan.FromSeconds(5),
+            TestContext.Current.CancellationToken);
+        var childWasStillRunning = false;
+        try
+        {
+            cancellation.Cancel();
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await run);
+            childWasStillRunning = IsProcessRunning(processId);
+        }
+        finally
+        {
+            KillProcessTreeIfRunning(processId);
+        }
+
+        Assert.False(childWasStillRunning, $"Child process {processId} survived cancellation.");
+    }
+
+    [Fact]
     public async Task Worker_rejects_incomplete_duplicate_or_unknown_arguments()
     {
         string[][] invalidArguments =
@@ -120,5 +164,35 @@ public sealed class ConcurrencyProbeTests
         using var command = connection.CreateCommand();
         command.CommandText = sql;
         return (string)command.ExecuteScalar()!;
+    }
+
+    private static bool IsProcessRunning(int processId)
+    {
+        try
+        {
+            using var process = System.Diagnostics.Process.GetProcessById(processId);
+            return !process.HasExited;
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+    }
+
+    private static void KillProcessTreeIfRunning(int processId)
+    {
+        try
+        {
+            using var process = System.Diagnostics.Process.GetProcessById(processId);
+            if (!process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+                process.WaitForExit();
+            }
+        }
+        catch (ArgumentException)
+        {
+            // The child already exited.
+        }
     }
 }

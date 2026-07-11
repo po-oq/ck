@@ -10,7 +10,8 @@ internal static class ProcessRunner
         string fileName,
         IReadOnlyList<string> arguments,
         string? workingDirectory,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Action<int>? processStarted = null)
     {
         var startInfo = new ProcessStartInfo
         {
@@ -28,9 +29,38 @@ internal static class ProcessRunner
 
         using var process = Process.Start(startInfo)
             ?? throw new InvalidOperationException($"Failed to start process: {fileName}");
-        var stdoutTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
-        var stderrTask = process.StandardError.ReadToEndAsync(cancellationToken);
-        await process.WaitForExitAsync(cancellationToken);
-        return new(process.ExitCode, await stdoutTask, await stderrTask);
+        Task<string>? stdoutTask = null;
+        Task<string>? stderrTask = null;
+        try
+        {
+            processStarted?.Invoke(process.Id);
+            stdoutTask = process.StandardOutput.ReadToEndAsync(CancellationToken.None);
+            stderrTask = process.StandardError.ReadToEndAsync(CancellationToken.None);
+            await process.WaitForExitAsync(cancellationToken);
+            return new(process.ExitCode, await stdoutTask, await stderrTask);
+        }
+        catch (Exception exception)
+        {
+            if (!process.HasExited)
+            {
+                try
+                {
+                    process.Kill(entireProcessTree: true);
+                }
+                catch (InvalidOperationException) when (process.HasExited)
+                {
+                    // The process exited between the state check and the kill request.
+                }
+            }
+
+            await process.WaitForExitAsync(CancellationToken.None);
+            if (stdoutTask is not null && stderrTask is not null)
+            {
+                await Task.WhenAll(stdoutTask, stderrTask);
+            }
+
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exception).Throw();
+            throw;
+        }
     }
 }
