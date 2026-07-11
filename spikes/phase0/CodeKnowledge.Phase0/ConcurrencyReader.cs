@@ -25,10 +25,7 @@ internal static class ConcurrencyReader
             await WaitForStartAsync(options.StartFile, cancellationToken);
             using var connection = OpenConnection(options.Database);
             var startedAt = Stopwatch.GetTimestamp();
-            var searches = 0;
-            var searchesWhileWritersActive = 0;
-            var searchesBeforeAllRowsSaved = 0;
-            long maxMatchCount = 0;
+            var consistentSearchesWhileWritesInProgress = 0;
 
             while (true)
             {
@@ -37,36 +34,48 @@ internal static class ConcurrencyReader
                     throw new TimeoutException("Expected writers did not complete before the reader timeout.");
                 }
 
-                var registered = ExecuteCount(connection, "SELECT COUNT(*) FROM concurrency_workers;");
+                using var snapshot = connection.BeginTransaction(deferred: true);
+                var registered = ExecuteCount(
+                    connection,
+                    snapshot,
+                    "SELECT COUNT(*) FROM concurrency_workers;");
                 if (registered < options.ExpectedWriters)
                 {
+                    snapshot.Commit();
                     await Task.Delay(TimeSpan.FromMilliseconds(1), cancellationToken);
                     continue;
                 }
 
                 var active = ExecuteCount(
                     connection,
+                    snapshot,
                     "SELECT COUNT(*) FROM concurrency_workers WHERE status = 'active';");
+                var rowCount = ExecuteCount(
+                    connection,
+                    snapshot,
+                    "SELECT COUNT(*) FROM operations;");
                 var matchCount = ExecuteCount(
                     connection,
+                    snapshot,
                     "SELECT COUNT(*) FROM operations_fts WHERE payload MATCH 'operation';");
-                _ = ExecuteCount(
+                var likeCount = ExecuteCount(
                     connection,
+                    snapshot,
                     "SELECT COUNT(*) FROM operations WHERE payload LIKE '%operation%';");
-                searches++;
-                maxMatchCount = Math.Max(maxMatchCount, matchCount);
-                if (active > 0)
+                if (active > 0 &&
+                    rowCount > 0 &&
+                    rowCount < options.ExpectedRows &&
+                    matchCount == rowCount &&
+                    likeCount == rowCount)
                 {
-                    searchesWhileWritersActive++;
-                }
-                if (matchCount > 0 && matchCount < options.ExpectedRows)
-                {
-                    searchesBeforeAllRowsSaved++;
+                    consistentSearchesWhileWritesInProgress++;
                 }
 
                 var completed = ExecuteCount(
                     connection,
+                    snapshot,
                     "SELECT COUNT(*) FROM concurrency_workers WHERE status = 'completed';");
+                snapshot.Commit();
                 if (completed == options.ExpectedWriters)
                 {
                     break;
@@ -79,10 +88,7 @@ internal static class ConcurrencyReader
             {
                 mode = "concurrency-reader",
                 status = "ok",
-                searches,
-                searchesWhileWritersActive,
-                searchesBeforeAllRowsSaved,
-                maxMatchCount
+                consistentSearchesWhileWritesInProgress
             }));
             return ProbeExitCodes.Success;
         }
@@ -164,9 +170,13 @@ internal static class ConcurrencyReader
         return connection;
     }
 
-    private static long ExecuteCount(SqliteConnection connection, string sql)
+    private static long ExecuteCount(
+        SqliteConnection connection,
+        SqliteTransaction transaction,
+        string sql)
     {
         using var command = connection.CreateCommand();
+        command.Transaction = transaction;
         command.CommandText = sql;
         return (long)command.ExecuteScalar()!;
     }

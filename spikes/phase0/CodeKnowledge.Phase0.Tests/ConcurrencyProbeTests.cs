@@ -186,10 +186,10 @@ public sealed class ConcurrencyProbeTests
             var root = readerDocument.RootElement;
             Assert.Equal("concurrency-reader", root.GetProperty("mode").GetString());
             Assert.Equal("ok", root.GetProperty("status").GetString());
-            Assert.True(root.GetProperty("searches").GetInt32() > 0);
-            Assert.True(root.GetProperty("searchesWhileWritersActive").GetInt32() > 0);
-            Assert.True(root.GetProperty("searchesBeforeAllRowsSaved").GetInt32() > 0);
-            Assert.True(root.GetProperty("maxMatchCount").GetInt64() > 0);
+            Assert.True(
+                root.GetProperty("consistentSearchesWhileWritesInProgress").GetInt32() > 0);
+            Assert.False(root.TryGetProperty("searchesWhileWritersActive", out _));
+            Assert.False(root.TryGetProperty("searchesBeforeAllRowsSaved", out _));
         }
 
         using var connection = new SqliteConnection($"Data Source={databasePath}");

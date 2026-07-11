@@ -52,7 +52,7 @@ artifacts/phase0/win-x64/CodeKnowledge.Phase0.exe self-check
 | 発行済みEXEのself-check | 成功 | 終了コード0、`Status = "ok"`、9項目すべて成功 |
 | FTS5 trigram | 成功 | 仮想テーブル作成成功 |
 | 日本語検索 | 成功 | 「メール」のMATCH、「仕様」「確認」のLIKE、混合検索が成功 |
-| SQLite同時検索・保存 | 成功 | 4 writerが本文とFTS5を同一トランザクションで各50件保存し、独立readerが全200件の保存完了前からMATCH/LIKE検索を反復。全件対応、一意性、内容、検索結果を確認し、ロックエラーなし |
+| SQLite同時検索・保存 | 成功 | 4 writerが本文とFTS5を同一トランザクションで各50件保存。独立readerは同一read snapshotでactive worker数、本文件数、MATCH件数、LIKE件数を取得し、全200件の保存完了前に3件数が一致する検索を確認。全件対応、一意性、内容、検索結果を検証し、ロックエラーなし |
 | SQLite同時実行前提 | 成功 | `journal_mode = wal`、`busy_timeout = 5000`、`foreign_keys = 1` |
 
 self-checkはstdoutへ単一JSONを出力する。主要な実測値は次のとおり。
