@@ -164,7 +164,7 @@ public sealed class CommandLineTests
 
 - [ ] **Step 4: テストが期待通り失敗することを確認する**
 
-Run: `dotnet test CodeKnowledge.Phase0.slnx --filter FullyQualifiedName~CommandLineTests`
+Run: `dotnet test CodeKnowledge.Phase0.slnx -- --filter-class CodeKnowledge.Phase0.Tests.CommandLineTests`
 
 Expected: FAIL。`CommandLine`または`ProbeMode`が存在しないコンパイルエラー。
 
@@ -200,7 +200,7 @@ internal static class CommandLine
 
 - [ ] **Step 6: テストとビルドを通す**
 
-Run: `dotnet test CodeKnowledge.Phase0.slnx --filter FullyQualifiedName~CommandLineTests`
+Run: `dotnet test CodeKnowledge.Phase0.slnx -- --filter-class CodeKnowledge.Phase0.Tests.CommandLineTests`
 
 Expected: PASS、失敗0件。
 
@@ -293,7 +293,7 @@ internal static class SearchTestDatabase
 
 - [ ] **Step 2: テストが失敗することを確認する**
 
-Run: `dotnet test CodeKnowledge.Phase0.slnx --filter FullyQualifiedName~SearchProbeTests`
+Run: `dotnet test CodeKnowledge.Phase0.slnx -- --filter-class CodeKnowledge.Phase0.Tests.SearchProbeTests`
 
 Expected: FAIL。`SearchProbe`が存在しない。
 
@@ -352,7 +352,7 @@ internal static class SearchProbe
 
 - [ ] **Step 4: 検索テストを通す**
 
-Run: `dotnet test CodeKnowledge.Phase0.slnx --filter FullyQualifiedName~SearchProbeTests`
+Run: `dotnet test CodeKnowledge.Phase0.slnx -- --filter-class CodeKnowledge.Phase0.Tests.SearchProbeTests`
 
 Expected: PASS、すべてのFTS、LIKE、メタ文字ケースが成功する。
 
@@ -395,7 +395,7 @@ public void Run_VerifiesAllSqliteAssumptions()
 
 - [ ] **Step 2: テストが失敗することを確認する**
 
-Run: `dotnet test CodeKnowledge.Phase0.slnx --filter FullyQualifiedName~SqliteProbeTests`
+Run: `dotnet test CodeKnowledge.Phase0.slnx -- --filter-class CodeKnowledge.Phase0.Tests.SqliteProbeTests`
 
 Expected: FAIL。`SqliteProbe`と`ProbeReport`が存在しない。
 
@@ -486,7 +486,7 @@ private static string Scalar(SqliteConnection connection, string sql)
 
 - [ ] **Step 5: 自己診断テストと全体テストを通す**
 
-Run: `dotnet test CodeKnowledge.Phase0.slnx --filter FullyQualifiedName~SqliteProbeTests`
+Run: `dotnet test CodeKnowledge.Phase0.slnx -- --filter-class CodeKnowledge.Phase0.Tests.SqliteProbeTests`
 
 Expected: PASS。SQLiteバージョン3.34.0以上、trigram作成、検索、PRAGMAが成功する。
 
@@ -569,7 +569,7 @@ internal static class ProcessRunner
 
 - [ ] **Step 2: テストが失敗することを確認する**
 
-Run: `dotnet test CodeKnowledge.Phase0.slnx --filter FullyQualifiedName~ConcurrencyProbeTests`
+Run: `dotnet test CodeKnowledge.Phase0.slnx -- --filter-class CodeKnowledge.Phase0.Tests.ConcurrencyProbeTests`
 
 Expected: FAIL。`ConcurrencyWorker`またはCLIルーティングが存在しない。
 
@@ -594,7 +594,7 @@ Execute(connection, "PRAGMA journal_mode = WAL;");
 
 - [ ] **Step 4: 同時実行テストを通す**
 
-Run: `dotnet test CodeKnowledge.Phase0.slnx --filter FullyQualifiedName~ConcurrencyProbeTests`
+Run: `dotnet test CodeKnowledge.Phase0.slnx -- --filter-class CodeKnowledge.Phase0.Tests.ConcurrencyProbeTests`
 
 Expected: 4プロセスすべて終了コード0、`database is locked`なし、200行、重複0。
 
@@ -603,7 +603,7 @@ Expected: 4プロセスすべて終了コード0、`database is locked`なし、
 Run:
 
 ```powershell
-1..3 | ForEach-Object { dotnet test CodeKnowledge.Phase0.slnx --filter FullyQualifiedName~ConcurrencyProbeTests }
+1..3 | ForEach-Object { dotnet test CodeKnowledge.Phase0.slnx -- --filter-class CodeKnowledge.Phase0.Tests.ConcurrencyProbeTests }
 ```
 
 Expected: 3回ともPASS。
@@ -651,7 +651,12 @@ Assert.Contains("\"status\":\"ok\"", json);
 
 - [ ] **Step 2: テストが失敗することを確認する**
 
-Run: `dotnet test CodeKnowledge.Phase0.slnx --filter "FullyQualifiedName~McpProbeTests|FullyQualifiedName~CommandExecutionTests"`
+Run:
+
+```powershell
+dotnet test CodeKnowledge.Phase0.slnx -- --filter-class CodeKnowledge.Phase0.Tests.McpProbeTests
+dotnet test CodeKnowledge.Phase0.slnx -- --filter-class CodeKnowledge.Phase0.Tests.CommandExecutionTests
+```
 
 Expected: FAIL。MCP server、Tool、またはProgramルーティングが存在しない。
 
@@ -757,7 +762,12 @@ static int InvalidMode(string[] modeArgs)
 
 - [ ] **Step 6: MCP、CLI、全体テストを通す**
 
-Run: `dotnet test CodeKnowledge.Phase0.slnx --filter "FullyQualifiedName~McpProbeTests|FullyQualifiedName~CommandExecutionTests"`
+Run:
+
+```powershell
+dotnet test CodeKnowledge.Phase0.slnx -- --filter-class CodeKnowledge.Phase0.Tests.McpProbeTests
+dotnet test CodeKnowledge.Phase0.slnx -- --filter-class CodeKnowledge.Phase0.Tests.CommandExecutionTests
+```
 
 Expected: PASS。Tool一覧と呼び出し成功、stdoutへログ混入なし。
 
@@ -794,7 +804,7 @@ dotnet publish spikes/phase0/CodeKnowledge.Phase0/CodeKnowledge.Phase0.csproj --
 
 - [ ] **Step 2: 現在の発行テスト結果を確認する**
 
-Run: `dotnet test CodeKnowledge.Phase0.slnx --filter FullyQualifiedName~PublishSmokeTests`
+Run: `dotnet test CodeKnowledge.Phase0.slnx -- --filter-class CodeKnowledge.Phase0.Tests.PublishSmokeTests`
 
 Expected: FAIL。単一ファイル発行設定が未定義、または成果物条件が満たされない。
 
@@ -814,7 +824,7 @@ probeの`csproj`へ追加する。
 
 - [ ] **Step 4: 発行スモークテストを通す**
 
-Run: `dotnet test CodeKnowledge.Phase0.slnx --filter FullyQualifiedName~PublishSmokeTests`
+Run: `dotnet test CodeKnowledge.Phase0.slnx -- --filter-class CodeKnowledge.Phase0.Tests.PublishSmokeTests`
 
 Expected: PASS。発行済みEXEの`self-check`が終了コード0。
 
