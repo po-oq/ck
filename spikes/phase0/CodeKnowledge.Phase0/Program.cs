@@ -40,11 +40,7 @@ static int RunSelfCheck(string[] modeArguments)
     finally
     {
         SqliteConnection.ClearAllPools();
-        foreach (var suffix in new[] { "", "-wal", "-shm" })
-        {
-            if (File.Exists(path + suffix))
-                File.Delete(path + suffix);
-        }
+        SelfCheckDatabaseCleanup.DeleteCandidates(path);
     }
 }
 

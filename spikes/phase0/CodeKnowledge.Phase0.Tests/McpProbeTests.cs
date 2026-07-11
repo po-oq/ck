@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using ModelContextProtocol.Client;
 
@@ -23,17 +24,65 @@ public sealed class McpProbeTests
 
         var tools = await client.ListToolsAsync(
             cancellationToken: TestContext.Current.CancellationToken);
-        Assert.Contains(tools, tool => tool.Name == "phase0_probe");
+        var tool = Assert.Single(tools);
+        Assert.Equal("phase0_probe", tool.Name);
+        AssertOutputSchema(tool);
 
         var result = await client.CallToolAsync(
             "phase0_probe",
             cancellationToken: TestContext.Current.CancellationToken);
-        var json = JsonSerializer.Serialize(result.StructuredContent);
+        using var contentDocument = JsonDocument.Parse(
+            JsonSerializer.Serialize(result.StructuredContent));
+        var content = contentDocument.RootElement;
+        Assert.Equal("ok", content.GetProperty("status").GetString());
+        Assert.False(string.IsNullOrEmpty(
+            content.GetProperty("executableVersion").GetString()));
+        Assert.True(content.GetProperty("processId").GetInt32() > 0);
+        Assert.True(Version.TryParse(content.GetProperty("sqliteVersion").GetString(), out _));
 
-        Assert.Contains("\"status\":\"ok\"", json, StringComparison.Ordinal);
-        Assert.Contains("\"executableVersion\":", json, StringComparison.Ordinal);
-        Assert.Contains("\"processId\":", json, StringComparison.Ordinal);
-        Assert.Contains("\"sqliteVersion\":", json, StringComparison.Ordinal);
-        Assert.Contains("\"serverTimestampUtc\":", json, StringComparison.Ordinal);
+        var timestampText = content.GetProperty("serverTimestampUtc").GetString();
+        Assert.True(DateTimeOffset.TryParse(
+            timestampText,
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.RoundtripKind,
+            out var timestamp));
+        Assert.Equal(TimeSpan.Zero, timestamp.Offset);
+    }
+
+    private static void AssertOutputSchema(McpClientTool tool)
+    {
+        using var schemaDocument = JsonDocument.Parse(
+            JsonSerializer.Serialize(tool.ProtocolTool.OutputSchema));
+        var schema = schemaDocument.RootElement;
+        Assert.Equal("object", schema.GetProperty("type").GetString());
+
+        var properties = schema.GetProperty("properties");
+        Assert.Equal(
+            [
+                "executableVersion",
+                "processId",
+                "serverTimestampUtc",
+                "sqliteVersion",
+                "status"
+            ],
+            properties.EnumerateObject().Select(static property => property.Name).Order());
+        Assert.Equal("string", properties.GetProperty("status").GetProperty("type").GetString());
+        Assert.Equal("string", properties.GetProperty("executableVersion").GetProperty("type").GetString());
+        Assert.Equal("integer", properties.GetProperty("processId").GetProperty("type").GetString());
+        Assert.Equal("string", properties.GetProperty("sqliteVersion").GetProperty("type").GetString());
+        Assert.Equal("string", properties.GetProperty("serverTimestampUtc").GetProperty("type").GetString());
+
+        Assert.Equal(
+            [
+                "executableVersion",
+                "processId",
+                "serverTimestampUtc",
+                "sqliteVersion",
+                "status"
+            ],
+            schema.GetProperty("required")
+                .EnumerateArray()
+                .Select(static item => item.GetString())
+                .Order());
     }
 }

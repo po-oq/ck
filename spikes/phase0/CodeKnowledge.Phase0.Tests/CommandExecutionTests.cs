@@ -29,6 +29,40 @@ public sealed class CommandExecutionTests
             StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task SelfCheck_WithExtraArguments_ReturnsInvalidArguments()
+    {
+        var result = await RunProbeAsync("self-check", "extra");
+
+        Assert.Equal(ProbeExitCodes.InvalidArguments, result.ExitCode);
+        Assert.Empty(result.StandardOutput);
+    }
+
+    [Fact]
+    public void SelfCheckCleanup_WhenDatabaseDeleteFails_StillDeletesWalAndShm()
+    {
+        using var workspace = new TestWorkspace();
+        var databasePath = workspace.PathFor("cleanup.db");
+        File.WriteAllText(databasePath, "database");
+        File.WriteAllText(databasePath + "-wal", "wal");
+        File.WriteAllText(databasePath + "-shm", "shm");
+        File.SetAttributes(databasePath, FileAttributes.ReadOnly);
+
+        try
+        {
+            Assert.Throws<UnauthorizedAccessException>(
+                () => SelfCheckDatabaseCleanup.DeleteCandidates(databasePath));
+
+            Assert.True(File.Exists(databasePath));
+            Assert.False(File.Exists(databasePath + "-wal"));
+            Assert.False(File.Exists(databasePath + "-shm"));
+        }
+        finally
+        {
+            File.SetAttributes(databasePath, FileAttributes.Normal);
+        }
+    }
+
     private static Task<ProcessResult> RunProbeAsync(params string[] arguments) =>
         ProcessRunner.RunAsync(
             "dotnet",
