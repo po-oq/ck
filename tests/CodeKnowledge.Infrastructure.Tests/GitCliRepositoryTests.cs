@@ -80,4 +80,68 @@ public sealed class GitCliRepositoryTests
 
         Assert.Equal("version one", content);
     }
+
+    [Fact]
+    public void ResolveContext_preserves_remote_url_containing_spaces()
+    {
+        using var repo = new TestGitRepo();
+        repo.CommitFile("a.txt", "x");
+        repo.Run("remote", "add", "spaced", "C:/tmp/repo with space");
+
+        var context = _repository.ResolveContext(repo.Root);
+
+        Assert.Equal("C:/tmp/repo with space", context.Remotes["spaced"]);
+    }
+
+    [Fact]
+    public void ReadFileAtCommit_preserves_utf8_bom_as_feff()
+    {
+        using var repo = new TestGitRepo();
+        var bytes = new byte[] { 0xEF, 0xBB, 0xBF }
+            .Concat("hello"u8.ToArray())
+            .ToArray();
+        File.WriteAllBytes(Path.Combine(repo.Root, "bom.txt"), bytes);
+        repo.Run("add", "bom.txt");
+        repo.Run("commit", "-m", "add bom file");
+        var commit = repo.Run("rev-parse", "HEAD").Trim();
+
+        var content = _repository.ReadFileAtCommit(repo.Root, commit, "bom.txt");
+
+        Assert.Equal("\uFEFFhello", content);
+    }
+
+    [Fact]
+    public void ResolveContext_resolves_worktree_root_and_branch()
+    {
+        using var repo = new TestGitRepo();
+        repo.CommitFile("a.txt", "x");
+        var worktreePath = Path.Combine(Path.GetTempPath(), $"ck-wt-{Guid.NewGuid():N}");
+        repo.Run("worktree", "add", worktreePath, "-b", "wt-branch");
+        try
+        {
+            var context = _repository.ResolveContext(worktreePath);
+
+            Assert.Equal(
+                Path.GetFullPath(worktreePath).TrimEnd(Path.DirectorySeparatorChar),
+                Path.GetFullPath(context.RepositoryRoot).TrimEnd(Path.DirectorySeparatorChar));
+            Assert.Equal("wt-branch", context.BranchName);
+        }
+        finally
+        {
+            repo.Run("worktree", "remove", "--force", worktreePath);
+            if (Directory.Exists(worktreePath))
+                Directory.Delete(worktreePath, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void ReadFileAtCommit_throws_invalid_arguments_for_missing_path()
+    {
+        using var repo = new TestGitRepo();
+        var commit = repo.CommitFile("a.txt", "x");
+
+        var exception = Assert.Throws<CodeKnowledgeException>(
+            () => _repository.ReadFileAtCommit(repo.Root, commit, "does/not/exist.txt"));
+        Assert.Equal(CodeKnowledgeException.InvalidArguments, exception.Code);
+    }
 }
