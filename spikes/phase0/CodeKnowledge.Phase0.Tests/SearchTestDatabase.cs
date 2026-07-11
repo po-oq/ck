@@ -18,10 +18,14 @@ internal static class SearchTestDatabase
             );
             INSERT INTO knowledge_records(id, title) VALUES
                 (1, '注文完了メール仕様'),
-                (2, '100%_safe sui-memory');
+                (2, '100%_safe sui-memory'),
+                (4, '詳細設計'),
+                (5, 'wildcard decoy'),
+                (6, 'path\segment');
             INSERT INTO knowledge_fts(id, title) VALUES
                 (1, '注文完了メール仕様'),
-                (2, '100%_safe sui-memory');
+                (2, '100%_safe sui-memory'),
+                (3, '配送完了メール');
             """;
         command.ExecuteNonQuery();
         return connection;

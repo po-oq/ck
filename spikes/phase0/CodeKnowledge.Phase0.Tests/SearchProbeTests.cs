@@ -13,17 +13,27 @@ public sealed class SearchProbeTests
     public void Search_MergesFtsAndLikeHits()
     {
         using var db = SearchTestDatabase.Create();
-        var ids = SearchProbe.Search(db, ["メール", "仕様"]);
-        Assert.Contains(1, ids);
+        var ids = SearchProbe.Search(db, ["配送完了", "詳細"]);
+        Assert.Equal([3, 4], ids.Order());
     }
 
     [Theory]
     [InlineData("sui-memory", 2)]
     [InlineData("%", 2)]
     [InlineData("_", 2)]
+    [InlineData("\\", 6)]
     public void Search_TreatsMetaCharactersAsLiterals(string term, long expectedId)
     {
         using var db = SearchTestDatabase.Create();
-        Assert.Contains(expectedId, SearchProbe.Search(db, [term]));
+        Assert.Equal([expectedId], SearchProbe.Search(db, [term]).Order());
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" \t ")]
+    public void Search_IgnoresEmptyTerms(string term)
+    {
+        using var db = SearchTestDatabase.Create();
+        Assert.Empty(SearchProbe.Search(db, [term]));
     }
 }
