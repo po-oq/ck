@@ -12,6 +12,12 @@ try
         ProbeMode.ConcurrencyWorker => await ConcurrencyWorker.RunAsync(
             selection.Arguments,
             Console.Out,
+            Console.Error,
+            CancellationToken.None),
+        ProbeMode.ConcurrencyReader => await ConcurrencyReader.RunAsync(
+            selection.Arguments,
+            Console.Out,
+            Console.Error,
             CancellationToken.None),
         _ => InvalidMode(args)
     };

@@ -14,6 +14,7 @@ public sealed class CommandLineTests
     [InlineData("mcp", "Mcp")]
     [InlineData("self-check", "SelfCheck")]
     [InlineData("concurrency-worker", "ConcurrencyWorker")]
+    [InlineData("concurrency-reader", "ConcurrencyReader")]
     [InlineData("unknown", "Invalid")]
     public void Parse_SelectsExpectedMode(string argument, string expected)
     {

@@ -9,9 +9,16 @@ internal static class ConcurrencyWorker
 {
     private static readonly TimeSpan StartTimeout = TimeSpan.FromSeconds(15);
 
+    public static Task<int> RunAsync(
+        string[] args,
+        TextWriter stdout,
+        CancellationToken cancellationToken) =>
+        RunAsync(args, stdout, TextWriter.Null, cancellationToken);
+
     public static async Task<int> RunAsync(
         string[] args,
         TextWriter stdout,
+        TextWriter stderr,
         CancellationToken cancellationToken)
     {
         if (!TryParseArguments(args, out var options))
@@ -26,7 +33,13 @@ internal static class ConcurrencyWorker
             for (var sequence = 0; sequence < options.Iterations; sequence++)
             {
                 WriteOperation(options.Database, options.WorkerId, sequence);
+                if (options.DelayMilliseconds > 0)
+                {
+                    await Task.Delay(options.DelayMilliseconds, cancellationToken);
+                }
             }
+
+            SetWorkerStatus(options.Database, options.WorkerId, "completed");
 
             var result = JsonSerializer.Serialize(new
             {
@@ -38,12 +51,16 @@ internal static class ConcurrencyWorker
             await stdout.WriteLineAsync(result);
             return ProbeExitCodes.Success;
         }
-        catch (SqliteException)
+        catch (SqliteException exception)
         {
+            await stderr.WriteLineAsync(
+                $"concurrency_worker_failed: sqlite_error={exception.SqliteErrorCode} extended_error={exception.SqliteExtendedErrorCode}");
             return ProbeExitCodes.UnexpectedError;
         }
-        catch (Exception)
+        catch (Exception exception)
         {
+            await stderr.WriteLineAsync(
+                $"concurrency_worker_failed: exception={exception.GetType().Name}");
             return ProbeExitCodes.UnexpectedError;
         }
     }
@@ -51,7 +68,7 @@ internal static class ConcurrencyWorker
     private static bool TryParseArguments(string[] args, out WorkerOptions options)
     {
         options = default!;
-        if (args.Length != 8)
+        if (args.Length is not (8 or 10))
         {
             return false;
         }
@@ -65,7 +82,7 @@ internal static class ConcurrencyWorker
             }
         }
 
-        if (values.Count != 4 ||
+        if (values.Count is not (4 or 5) ||
             !values.TryGetValue("--database", out var database) ||
             !values.TryGetValue("--worker-id", out var workerIdText) ||
             !values.TryGetValue("--iterations", out var iterationsText) ||
@@ -75,12 +92,19 @@ internal static class ConcurrencyWorker
             !int.TryParse(workerIdText, NumberStyles.None, CultureInfo.InvariantCulture, out var workerId) ||
             workerId < 0 ||
             !int.TryParse(iterationsText, NumberStyles.None, CultureInfo.InvariantCulture, out var iterations) ||
-            iterations <= 0)
+            iterations <= 0 ||
+            (values.TryGetValue("--delay-ms", out var delayText) &&
+             (!int.TryParse(delayText, NumberStyles.None, CultureInfo.InvariantCulture, out _) ||
+              int.Parse(delayText, CultureInfo.InvariantCulture) < 0)) ||
+            values.Keys.Any(key => key is not ("--database" or "--worker-id" or "--iterations" or "--start-file" or "--delay-ms")))
         {
             return false;
         }
 
-        options = new(database, workerId, iterations, startFile);
+        var delayMilliseconds = values.TryGetValue("--delay-ms", out delayText)
+            ? int.Parse(delayText, CultureInfo.InvariantCulture)
+            : 0;
+        options = new(database, workerId, iterations, startFile, delayMilliseconds);
         return true;
     }
 
@@ -113,6 +137,18 @@ internal static class ConcurrencyWorker
         Execute(connection, "PRAGMA journal_mode = WAL;");
 
         using var transaction = connection.BeginTransaction();
+        if (sequence == 0)
+        {
+            using var activate = connection.CreateCommand();
+            activate.Transaction = transaction;
+            activate.CommandText = """
+                INSERT INTO concurrency_workers(worker_id, status)
+                VALUES ($workerId, 'active');
+                """;
+            activate.Parameters.AddWithValue("$workerId", workerId);
+            activate.ExecuteNonQuery();
+        }
+
         using (var insert = connection.CreateCommand())
         {
             insert.Transaction = transaction;
@@ -127,6 +163,18 @@ internal static class ConcurrencyWorker
             insert.ExecuteNonQuery();
         }
 
+        using (var insertSearch = connection.CreateCommand())
+        {
+            insertSearch.Transaction = transaction;
+            insertSearch.CommandText = """
+                INSERT INTO operations_fts(operation_id, payload)
+                VALUES ($operationId, $payload);
+                """;
+            insertSearch.Parameters.AddWithValue("$operationId", $"{workerId:D2}-{sequence:D4}");
+            insertSearch.Parameters.AddWithValue("$payload", $"worker-{workerId:D2}-operation-{sequence:D4}");
+            insertSearch.ExecuteNonQuery();
+        }
+
         using (var count = connection.CreateCommand())
         {
             count.Transaction = transaction;
@@ -135,6 +183,30 @@ internal static class ConcurrencyWorker
         }
 
         transaction.Commit();
+    }
+
+    private static void SetWorkerStatus(string database, int workerId, string status)
+    {
+        using var connection = OpenConnection(database);
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE concurrency_workers SET status = $status WHERE worker_id = $workerId;
+            """;
+        command.Parameters.AddWithValue("$status", status);
+        command.Parameters.AddWithValue("$workerId", workerId);
+        command.ExecuteNonQuery();
+    }
+
+    private static SqliteConnection OpenConnection(string database)
+    {
+        var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+        {
+            DataSource = database,
+            Mode = SqliteOpenMode.ReadWrite
+        }.ToString());
+        connection.Open();
+        Execute(connection, "PRAGMA busy_timeout = 5000;");
+        return connection;
     }
 
     private static void Execute(SqliteConnection connection, string sql)
@@ -148,5 +220,6 @@ internal static class ConcurrencyWorker
         string Database,
         int WorkerId,
         int Iterations,
-        string StartFile);
+        string StartFile,
+        int DelayMilliseconds);
 }

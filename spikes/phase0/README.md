@@ -47,11 +47,12 @@ artifacts/phase0/win-x64/CodeKnowledge.Phase0.exe self-check
 | 検証 | 結果 | 実測 |
 |---|---|---|
 | restore | 成功 | 全プロジェクトが最新 |
-| Release全テスト | 成功 | 不合格0、合格28、スキップ0、合計28 |
+| Release全テスト | 成功 | 不合格0、合格30、スキップ0、合計30 |
 | `win-x64` publish | 成功 | 終了コード0 |
 | 発行済みEXEのself-check | 成功 | 終了コード0、`Status = "ok"`、9項目すべて成功 |
 | FTS5 trigram | 成功 | 仮想テーブル作成成功 |
 | 日本語検索 | 成功 | 「メール」のMATCH、「仕様」「確認」のLIKE、混合検索が成功 |
+| SQLite同時検索・保存 | 成功 | 4 writerが本文とFTS5を同一トランザクションで各50件保存し、独立readerが全200件の保存完了前からMATCH/LIKE検索を反復。全件対応、一意性、内容、検索結果を確認し、ロックエラーなし |
 | SQLite同時実行前提 | 成功 | `journal_mode = wal`、`busy_timeout = 5000`、`foreign_keys = 1` |
 
 self-checkはstdoutへ単一JSONを出力する。主要な実測値は次のとおり。
@@ -154,7 +155,7 @@ Claude Codeから`phase0_probe`を明示的に呼び出し、`status = "ok"`、E
 
 | ファイル名 | サイズ (bytes) | 配布要否 |
 |---|---:|---|
-| `CodeKnowledge.Phase0.exe` | 6,646,292 | 必須 |
+| `CodeKnowledge.Phase0.exe` | 6,658,580 | 必須 |
 
 発行ディレクトリには上記EXEだけが存在し、隣接するネイティブSQLiteファイルは生成されなかった。framework-dependent発行のため、対象マシンには.NET 10 Runtimeが必要である。管理者権限やインストーラーを使わない配置での最終確認は、3クライアントの実機検証と同時に行う。
 
