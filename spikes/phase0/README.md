@@ -2,7 +2,7 @@
 
 このディレクトリは、Code Knowledge本実装の前提となるSQLite、MCP stdio、複数プロセス同時実行、およびWindows向け単一ファイル発行を検証するspikeである。Phase 0のコードを本番コードへ直接昇格させない。
 
-現時点では自動検証だけが完了している。Cursor、GitHub Copilot in VS Code、Claude Codeによる実機検証とユーザー承認が未完了のため、**Phase 0は未完了であり、Phase 1へ移行できない**。
+自動検証とClaude Codeの実機検証が完了している。CursorとGitHub Copilot in VS Codeの実機検証は、2026-07-11のユーザー判断により検証対象外とした（Deviations参照）。残る完了条件はユーザーによるPhase 0完了とPhase 1移行の承認である。
 
 ## 実行環境と技術前提
 
@@ -32,7 +32,7 @@
 
 ## 自動検証手順
 
-リポジトリルート `C:\zDev\repo\ck\.worktrees\phase0-probe` で、次のコマンドを順番に実行する。
+リポジトリルート `C:\zDev\repo\ck` で、次のコマンドを順番に実行する。
 
 ```powershell
 dotnet --info
@@ -76,8 +76,10 @@ self-checkはstdoutへ単一JSONを出力する。主要な実測値は次のと
 発行済みEXEの絶対パスは次のとおり。
 
 ```text
-C:\zDev\repo\ck\.worktrees\phase0-probe\artifacts\phase0\win-x64\CodeKnowledge.Phase0.exe
+C:\zDev\repo\ck\artifacts\phase0\win-x64\CodeKnowledge.Phase0.exe
 ```
+
+当初の自動検証はworktree `.worktrees\phase0-probe` で実施したが、mainへのマージ後にworktreeを削除したため、2026-07-11にリポジトリルートで再発行し、発行済みEXEの`self-check`が全9項目成功（終了コード0）することを再確認した。
 
 引数なしで起動するとMCP stdioサーバーとして動作し、`phase0_probe` Toolを1つ公開する。stdoutはMCP通信専用であり、通常ログには使用しない。
 
@@ -90,7 +92,7 @@ C:\zDev\repo\ck\.worktrees\phase0-probe\artifacts\phase0\win-x64\CodeKnowledge.P
   "mcpServers": {
     "code-knowledge-phase0": {
       "type": "stdio",
-      "command": "C:\\zDev\\repo\\ck\\.worktrees\\phase0-probe\\artifacts\\phase0\\win-x64\\CodeKnowledge.Phase0.exe",
+      "command": "C:\\zDev\\repo\\ck\\artifacts\\phase0\\win-x64\\CodeKnowledge.Phase0.exe",
       "args": [],
       "env": {}
     }
@@ -108,7 +110,7 @@ C:\zDev\repo\ck\.worktrees\phase0-probe\artifacts\phase0\win-x64\CodeKnowledge.P
 {
   "servers": {
     "code-knowledge-phase0": {
-      "command": "C:\\zDev\\repo\\ck\\.worktrees\\phase0-probe\\artifacts\\phase0\\win-x64\\CodeKnowledge.Phase0.exe",
+      "command": "C:\\zDev\\repo\\ck\\artifacts\\phase0\\win-x64\\CodeKnowledge.Phase0.exe",
       "args": [],
       "env": {}
     }
@@ -124,10 +126,10 @@ CLIからユーザー全体またはプロジェクト単位で登録する。
 
 ```powershell
 # ユーザー全体
-claude mcp add --transport stdio --scope user code-knowledge-phase0 -- "C:\zDev\repo\ck\.worktrees\phase0-probe\artifacts\phase0\win-x64\CodeKnowledge.Phase0.exe"
+claude mcp add --transport stdio --scope user code-knowledge-phase0 -- "C:\zDev\repo\ck\artifacts\phase0\win-x64\CodeKnowledge.Phase0.exe"
 
 # プロジェクト単位
-claude mcp add --transport stdio --scope project code-knowledge-phase0 -- "C:\zDev\repo\ck\.worktrees\phase0-probe\artifacts\phase0\win-x64\CodeKnowledge.Phase0.exe"
+claude mcp add --transport stdio --scope project code-knowledge-phase0 -- "C:\zDev\repo\ck\artifacts\phase0\win-x64\CodeKnowledge.Phase0.exe"
 ```
 
 登録状態を確認する。
@@ -145,9 +147,9 @@ Claude Codeから`phase0_probe`を明示的に呼び出し、`status = "ok"`、E
 
 | クライアント | バージョン | 検証日 | phase0_probe | EXE版 | SQLite版 | 設定・所見 |
 |---|---|---|---|---|---|---|
-| Cursor | 未実施 | 未実施 | 未実施 | 未実施 | 未実施 | 未実施 |
-| GitHub Copilot in VS Code | 未実施 | 未実施 | 未実施 | 未実施 | 未実施 | 未実施 |
-| Claude Code | 未実施 | 未実施 | 未実施 | 未実施 | 未実施 | 未実施 |
+| Cursor | 対象外 | 2026-07-11 | 対象外（ユーザー判断で検証免除） | ― | ― | 現時点で実施環境がないため、ユーザー判断により検証対象外とした。Deviations参照 |
+| GitHub Copilot in VS Code | 対象外 | 2026-07-11 | 対象外（ユーザー判断で検証免除） | ― | ― | 現時点で実施環境がないため、ユーザー判断により検証対象外とした。Deviations参照 |
+| Claude Code | 2.1.207 | 2026-07-11 | 成功（`status = "ok"`） | 1.0.0.0 | 3.50.4 | `claude mcp add --transport stdio --scope project` で `.mcp.json` へ登録。projectスコープのため初回セッションで承認プロンプトが表示され、「Use this MCP server」を選択して承認。`phase0_probe` はprocessIdとUTCサーバー時刻を含む構造化JSONを返却 |
 
 ## 発行成果物
 
@@ -163,15 +165,15 @@ Claude Codeから`phase0_probe`を明示的に呼び出し、`status = "ok"`、E
 
 自動検証範囲ではなし。
 
-3クライアントの実機検証は未実施であり、これは技術的前提との差異ではなく未完了の手動ゲートである。実機検証で要件定義書と異なる結果が出た場合は、前提、実測、再現手順、対応候補をこの節へ記録し、要件改訂と承認が完了するまでPhase 1への移行をブロックする。
+設計書第8章・第11章は3クライアント（Cursor、GitHub Copilot in VS Code、Claude Code）すべてでの実機検証成功を完了条件としていたが、2026-07-11、CursorとGitHub Copilot in VS Codeは現時点で実施環境がないため、ユーザー判断によりこの2クライアントを検証対象外とし、Claude Codeの実機検証成功をもって実機検証ゲートを満たすことをユーザーが承認した。この2クライアントは検証未実施のままであり、成功したわけではない。将来これらのクライアントで利用を開始する際は、READMEの設定例に従って`phase0_probe`の疎通確認を行い、この記録を更新する。
 
 ## Phase 0完了判定
 
 - [x] Release構成の全自動テスト成功
 - [x] 発行済みEXEのself-check成功
-- [ ] Cursorでphase0_probe成功
-- [ ] GitHub Copilot in VS Codeでphase0_probe成功
-- [ ] Claude Codeでphase0_probe成功
+- [x] Cursorでphase0_probe成功（2026-07-11 ユーザー判断で検証対象外。Deviations参照）
+- [x] GitHub Copilot in VS Codeでphase0_probe成功（2026-07-11 ユーザー判断で検証対象外。Deviations参照）
+- [x] Claude Codeでphase0_probe成功
 - [x] 発行成果物一覧を記録
 - [x] Deviationsが「なし」、または要件改訂が承認済み
 - [ ] ユーザーがPhase 0完了とPhase 1移行を承認
