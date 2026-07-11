@@ -505,6 +505,7 @@ git commit -m "feat: add sqlite phase 0 self check"
 
 **Files:**
 - Create: `spikes/phase0/CodeKnowledge.Phase0/ConcurrencyWorker.cs`
+- Modify: `spikes/phase0/CodeKnowledge.Phase0/Program.cs`（承認済み境界変更: `concurrency-worker`だけを先行して実DLLからルーティングする）
 - Create: `spikes/phase0/CodeKnowledge.Phase0.Tests/ProcessRunner.cs`
 - Create: `spikes/phase0/CodeKnowledge.Phase0.Tests/ConcurrencyProbeTests.cs`
 
@@ -592,6 +593,8 @@ Execute(connection, "PRAGMA journal_mode = WAL;");
 
 引数不正は終了コード2、SQLiteまたは予期しない失敗は終了コード3とする。
 
+`Program.cs`は`concurrency-worker`だけを`ConcurrencyWorker.RunAsync`へルーティングする。`self-check`と`mcp`のルーティングはTask 5まで進めない。
+
 - [ ] **Step 4: 同時実行テストを通す**
 
 Run: `dotnet test CodeKnowledge.Phase0.slnx -- --filter-class CodeKnowledge.Phase0.Tests.ConcurrencyProbeTests`
@@ -611,22 +614,22 @@ Expected: 3回ともPASS。
 - [ ] **Step 6: コミットする**
 
 ```powershell
-git add spikes/phase0/CodeKnowledge.Phase0/ConcurrencyWorker.cs spikes/phase0/CodeKnowledge.Phase0.Tests
+git add docs/superpowers/plans/2026-07-11-code-knowledge-phase0.md spikes/phase0/CodeKnowledge.Phase0/Program.cs spikes/phase0/CodeKnowledge.Phase0/ConcurrencyWorker.cs spikes/phase0/CodeKnowledge.Phase0.Tests
 git commit -m "test: verify sqlite multi-process concurrency"
 ```
 
-### Task 5: MCP stdio serverと実行モード統合
+### Task 5: MCP stdio serverと残りの実行モード統合
 
 **Files:**
 - Create: `spikes/phase0/CodeKnowledge.Phase0/McpProbeTool.cs`
 - Create: `spikes/phase0/CodeKnowledge.Phase0/McpServerRunner.cs`
-- Replace: `spikes/phase0/CodeKnowledge.Phase0/Program.cs`
+- Modify: `spikes/phase0/CodeKnowledge.Phase0/Program.cs`（Task 4の`concurrency-worker`ルーティングを維持し、`self-check`と`mcp`を完成させる）
 - Create: `spikes/phase0/CodeKnowledge.Phase0.Tests/McpProbeTests.cs`
 - Create: `spikes/phase0/CodeKnowledge.Phase0.Tests/CommandExecutionTests.cs`
 
 **Interfaces:**
 - Consumes: `CommandLine.Parse`、`SqliteProbe.Run`、`ConcurrencyWorker.RunAsync`
-- Produces: MCP Tool `phase0_probe`、`McpServerRunner.RunAsync(CancellationToken)`、3モードの実行可能CLI
+- Produces: MCP Tool `phase0_probe`、`McpServerRunner.RunAsync(CancellationToken)`、Task 4のworkerルートを含む3モードの実行可能CLI
 
 - [ ] **Step 1: MCP Tool呼び出しとstdout純度の失敗テストを書く**
 
@@ -658,7 +661,7 @@ dotnet test CodeKnowledge.Phase0.slnx -- --filter-class CodeKnowledge.Phase0.Tes
 dotnet test CodeKnowledge.Phase0.slnx -- --filter-class CodeKnowledge.Phase0.Tests.CommandExecutionTests
 ```
 
-Expected: FAIL。MCP server、Tool、またはProgramルーティングが存在しない。
+Expected: FAIL。MCP server、Tool、または`self-check`/`mcp`のProgramルーティングが存在しない。`concurrency-worker`のルーティングはTask 4で実装済み。
 
 - [ ] **Step 3: 診断Toolを実装する**
 
@@ -712,7 +715,9 @@ await builder.Build().RunAsync(cancellationToken);
 return ProbeExitCodes.Success;
 ```
 
-- [ ] **Step 5: Programで3モードを統合する**
+- [ ] **Step 5: Programで残り2モードを統合し、3モードを完成させる**
+
+Task 4で追加した`concurrency-worker`ルートを維持し、`self-check`と`mcp`のルーティングを追加する。
 
 ```csharp
 using System.Text.Json;
