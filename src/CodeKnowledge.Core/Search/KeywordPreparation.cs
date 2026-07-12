@@ -13,7 +13,8 @@ public static class KeywordPreparation
     public static PreparedKeywords Prepare(IReadOnlyList<string> keywords)
     {
         var normalized = keywords
-            .Select(keyword => keyword.Normalize(NormalizationForm.FormKC).Trim())
+            .Select(keyword => StripControlCharacters(
+                keyword.Normalize(NormalizationForm.FormKC)).Trim())
             .Where(keyword => keyword.Length > 0)
             .Distinct(StringComparer.Ordinal)
             .ToList();
@@ -35,6 +36,20 @@ public static class KeywordPreparation
             ? null
             : string.Join(" OR ", fts.Select(k => $"\"{k.Replace("\"", "\"\"")}\""));
         return new PreparedKeywords(fts, like, matchExpression);
+    }
+
+    private static string StripControlCharacters(string keyword)
+    {
+        // 要件8.4: C0制御文字（U+0000〜U+001F）とDEL（U+007F）はFTS MATCH式を壊すため除去する
+        var builder = new StringBuilder(keyword.Length);
+        foreach (var ch in keyword)
+        {
+            if (ch is <= '\u001F' or '\u007F')
+                continue;
+            builder.Append(ch);
+        }
+
+        return builder.ToString();
     }
 
     public static string EscapeLikePattern(string keyword)

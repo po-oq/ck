@@ -59,4 +59,26 @@ public sealed class KeywordPreparationTests
     {
         Assert.Equal(expected, KeywordPreparation.EscapeLikePattern(keyword));
     }
+
+    [Fact]
+    public void Prepare_strips_control_characters_from_keywords() // 要件8.4
+    {
+        var prepared = KeywordPreparation.Prepare(["ab\0cd", "a\tb"]);
+        Assert.Equal(["abcd"], prepared.FtsKeywords);
+        Assert.Equal(["ab"], prepared.LikeKeywords);
+        Assert.NotNull(prepared.FtsMatchExpression);
+        Assert.DoesNotContain(prepared.FtsMatchExpression!, ch => char.IsControl(ch));
+    }
+
+    [Fact]
+    public void Prepare_drops_control_only_keywords_and_rejects_all_control()
+    {
+        var prepared = KeywordPreparation.Prepare(["メール", "\0"]);
+        Assert.Equal(["メール"], prepared.FtsKeywords);
+        Assert.Empty(prepared.LikeKeywords);
+
+        var exception = Assert.Throws<CodeKnowledgeException>(
+            () => KeywordPreparation.Prepare(["\0", ""]));
+        Assert.Equal(CodeKnowledgeException.InvalidArguments, exception.Code);
+    }
 }
