@@ -153,9 +153,19 @@ public sealed class SaveKnowledgeUseCase(
         {
             var relativePath = NormalizeFilePath(input.FilePath, repositoryRoot);
             var content = git.ReadFileAtCommit(repositoryRoot, commitHash, relativePath);
-            var symbolHash = input.StartLine is { } start && input.EndLine is { } end
-                ? ContentHasher.ComputeSymbolHash(content, start, end)
-                : null;
+            string? symbolHash = null;
+            if (input.StartLine is { } start && input.EndLine is { } end)
+            {
+                // startLineがファイル末尾を超えるとContentHasherは黙って空文字列をハッシュし、
+                // Phase 2の陳腐化比較を汚染する。保存前に実際の行数と照合して拒否する。
+                // endLine側の行き過ぎは既存のクランプ仕様どおり許容する（実コンテンツをハッシュできる）。
+                var lineCount = CountLines(content);
+                if (start > lineCount)
+                    throw new CodeKnowledgeException(
+                        CodeKnowledgeException.InvalidArguments,
+                        $"Evidence start line {start} exceeds '{relativePath}' which has {lineCount} lines.");
+                symbolHash = ContentHasher.ComputeSymbolHash(content, start, end);
+            }
             records.Add(new EvidenceRecord(
                 NewId(), relativePath, input.SymbolId, input.SymbolName, input.SymbolKind,
                 input.Signature, input.StartLine, input.EndLine, commitHash,
@@ -176,6 +186,19 @@ public sealed class SaveKnowledgeUseCase(
     private static bool MutuallyContains(string left, string right)
         => left.Contains(right, StringComparison.OrdinalIgnoreCase) ||
            right.Contains(left, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// ContentHasher.ComputeSymbolHashと同じ行数セマンティクスで数える:
+    /// 改行コードを\nに統一して分割し、末尾改行由来の空要素は数えない。
+    /// </summary>
+    private static int CountLines(string content)
+    {
+        var lines = content.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
+        var lineCount = lines.Length;
+        if (lineCount > 0 && lines[lineCount - 1] == "")
+            lineCount--;
+        return lineCount;
+    }
 
     internal static string NormalizeFilePath(string filePath, string repositoryRoot)
     {

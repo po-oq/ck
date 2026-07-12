@@ -142,4 +142,44 @@ public sealed class SaveKnowledgeUseCaseTests
         Assert.Equal(CodeKnowledgeException.InvalidArguments, exception.Code);
         Assert.Empty(_knowledgeStore.SavedVersions);
     }
+
+    [Fact]
+    public void Execute_rejects_start_line_beyond_file_length() // data-integrity: avoid silently hashing empty content
+    {
+        // ファイルは4行（末尾改行の後の空要素はContentHasherの行数に数えない）。startLine=10は範囲外。
+        var exception = Assert.Throws<CodeKnowledgeException>(() =>
+            UseCase.Execute(Request(evidence:
+                [new SaveEvidenceInput(
+                    @"C:\work\order-api\src\OrderService.cs", null, "OrderService", "class", null,
+                    10, 20, null)])));
+        Assert.Equal(CodeKnowledgeException.InvalidArguments, exception.Code);
+        Assert.Contains("src/OrderService.cs", exception.Message);
+        Assert.Contains("10", exception.Message);
+        Assert.Contains("4", exception.Message);
+        Assert.Empty(_knowledgeStore.SavedVersions);
+    }
+
+    [Fact]
+    public void Execute_allows_end_line_beyond_file_length() // 既存のクランプ仕様: 末尾側の行き過ぎは実コンテンツをハッシュする
+    {
+        var result = UseCase.Execute(Request(evidence:
+            [new SaveEvidenceInput(
+                @"C:\work\order-api\src\OrderService.cs", null, "OrderService", "class", null,
+                2, 999, null)]));
+
+        Assert.True(result.CreatedNewKnowledge);
+        var evidence = Assert.Single(_knowledgeStore.SavedVersions[0].Evidence);
+        Assert.Equal(
+            ContentHasher.ComputeSymbolHash(_git.FilesAtCommit["src/OrderService.cs"], 2, 999),
+            evidence.SymbolHash);
+    }
+
+    [Fact]
+    public void Execute_propagates_error_for_missing_evidence_file() // contract pin: コミットに存在しないファイルは保存前に失敗する
+    {
+        var exception = Assert.Throws<CodeKnowledgeException>(() =>
+            UseCase.Execute(Request(filePath: @"C:\work\order-api\src\Missing.cs")));
+        Assert.Equal(CodeKnowledgeException.InvalidArguments, exception.Code);
+        Assert.Empty(_knowledgeStore.SavedVersions);
+    }
 }
