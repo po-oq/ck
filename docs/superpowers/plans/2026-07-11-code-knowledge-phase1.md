@@ -1844,7 +1844,7 @@ public static class KeywordPreparation
 }
 ```
 
-- [ ] **Step 1: 失敗するテストを書く**
+- [x] **Step 1: 失敗するテストを書く**
 
 `tests/CodeKnowledge.Core.Tests/KeywordPreparationTests.cs`:
 
@@ -1913,12 +1913,12 @@ public sealed class KeywordPreparationTests
 }
 ```
 
-- [ ] **Step 2: テストが失敗することを確認する**
+- [x] **Step 2: テストが失敗することを確認する**
 
 Run: `dotnet test tests/CodeKnowledge.Core.Tests`
 Expected: コンパイルエラーで失敗。
 
-- [ ] **Step 3: 最小実装を書く**
+- [x] **Step 3: 最小実装を書く**
 
 `src/CodeKnowledge.Core/Search/KeywordPreparation.cs`:
 
@@ -1973,12 +1973,12 @@ public static class KeywordPreparation
 }
 ```
 
-- [ ] **Step 4: テストが成功することを確認する**
+- [x] **Step 4: テストが成功することを確認する**
 
 Run: `dotnet test tests/CodeKnowledge.Core.Tests`
 Expected: PASS。
 
-- [ ] **Step 5: コミット**
+- [x] **Step 5: コミット**
 
 ```bash
 git add src/CodeKnowledge.Core/Search tests/CodeKnowledge.Core.Tests
@@ -1997,7 +1997,7 @@ git commit -m "feat: add keyword normalization and query sanitization"
 - Consumes: なし
 - Produces: `ContentHasher.ComputeFileHash(string content) -> string`（SHA-256 hex）、`ContentHasher.ComputeSymbolHash(string fileContent, int startLine, int endLine) -> string`（行範囲抽出 + 空白正規化 + SHA-256。要件9.4段階2）
 
-- [ ] **Step 1: 失敗するテストを書く**
+- [x] **Step 1: 失敗するテストを書く**
 
 `tests/CodeKnowledge.Core.Tests/ContentHasherTests.cs`:
 
@@ -2054,12 +2054,12 @@ public sealed class ContentHasherTests
 }
 ```
 
-- [ ] **Step 2: テストが失敗することを確認する**
+- [x] **Step 2: テストが失敗することを確認する**
 
 Run: `dotnet test tests/CodeKnowledge.Core.Tests`
 Expected: コンパイルエラーで失敗。
 
-- [ ] **Step 3: 最小実装を書く**
+- [x] **Step 3: 最小実装を書く**
 
 `src/CodeKnowledge.Core/Hashing/ContentHasher.cs`:
 
@@ -2098,14 +2098,14 @@ public static partial class ContentHasher
 }
 ```
 
-- [ ] **Step 4: テストが成功することを確認する**
+- [x] **Step 4: テストが成功することを確認する**
 
 Run: `dotnet test tests/CodeKnowledge.Core.Tests`
 Expected: PASS。
 
 注意: `ComputeSymbolHash_ignores_whitespace_noise`はインデント幅の違い（4スペース vs 2スペース）を同一視できるかを検証する。連続空白の縮約（`[ \t]+` → 単一スペース）で先頭インデントも縮約されるため一致する。
 
-- [ ] **Step 5: コミット**
+- [x] **Step 5: コミット**
 
 ```bash
 git add src/CodeKnowledge.Core/Hashing tests/CodeKnowledge.Core.Tests
@@ -2173,7 +2173,7 @@ public sealed record SaveKnowledgeResult(
     bool CreatedNewKnowledge, IReadOnlyList<KnowledgeSummary> SimilarKnowledge);
 ```
 
-- [ ] **Step 1: フェイクと失敗するCoreテストを書く**
+- [x] **Step 1: フェイクと失敗するCoreテストを書く**
 
 `tests/CodeKnowledge.Core.Tests/Fakes/FakeKnowledgeStore.cs`:
 
@@ -2343,12 +2343,12 @@ public sealed class SaveKnowledgeUseCaseTests
 }
 ```
 
-- [ ] **Step 2: テストが失敗することを確認する**
+- [x] **Step 2: テストが失敗することを確認する**
 
 Run: `dotnet test tests/CodeKnowledge.Core.Tests`
 Expected: コンパイルエラーで失敗。
 
-- [ ] **Step 3: Core実装を書く**
+- [x] **Step 3: Core実装を書く**
 
 `src/CodeKnowledge.Core/Knowledge/IKnowledgeStore.cs`:
 
@@ -2574,12 +2574,12 @@ public sealed class SaveKnowledgeUseCase(
 }
 ```
 
-- [ ] **Step 4: Coreテストが成功することを確認する**
+- [x] **Step 4: Coreテストが成功することを確認する**
 
 Run: `dotnet test tests/CodeKnowledge.Core.Tests`
 Expected: PASS。
 
-- [ ] **Step 5: 失敗するStore統合テストを書く**
+- [x] **Step 5: 失敗するStore統合テストを書く**
 
 `tests/CodeKnowledge.Infrastructure.Tests/SqliteKnowledgeStoreSaveTests.cs`:
 
@@ -2687,7 +2687,7 @@ public sealed class SqliteKnowledgeStoreSaveTests : IDisposable
 }
 ```
 
-- [ ] **Step 6: SqliteKnowledgeStoreの保存系を実装する**
+- [x] **Step 6: SqliteKnowledgeStoreの保存系を実装する**
 
 `src/CodeKnowledge.Infrastructure/Stores/SqliteKnowledgeStore.cs`（このタスクでは`SaveVersion`と`ListSummaries`まで実装し、`GetDetail`・`SearchFts`・`SearchLike`は`NotImplementedException`ではなくTask 10・11で追加するprivateメソッド分割を見越して部分実装とする。コンパイルを通すため、このタスクの時点では後続メソッドは`throw new NotSupportedException("Implemented in a later task.");`とする）:
 
@@ -2884,12 +2884,12 @@ public sealed class SqliteKnowledgeStore(SqliteConnectionFactory factory) : IKno
 
 注意: `SqliteCommand.Transaction`は同一接続の`BeginTransaction`中は自動関連付けされないため、コンパイル・実行時にエラーになる場合は`Execute`へ`SqliteTransaction`を渡して`command.Transaction`へ設定する形へ修正する（Microsoft.Data.Sqliteはトランザクション中のコマンドに`Transaction`設定を要求する）。
 
-- [ ] **Step 7: 統合テストが成功することを確認する**
+- [x] **Step 7: 統合テストが成功することを確認する**
 
 Run: `dotnet test tests/CodeKnowledge.Infrastructure.Tests`
 Expected: PASS。
 
-- [ ] **Step 8: コミット**
+- [x] **Step 8: コミット**
 
 ```bash
 git add src/CodeKnowledge.Core/Knowledge src/CodeKnowledge.Infrastructure/Stores tests/
@@ -2927,7 +2927,7 @@ public sealed class SearchKnowledgeUseCase(ResolveProjectUseCase resolveProject,
 }
 ```
 
-- [ ] **Step 1: 失敗するCoreテスト（マージ・ランキング）を書く**
+- [x] **Step 1: 失敗するCoreテスト（マージ・ランキング）を書く**
 
 `tests/CodeKnowledge.Core.Tests/SearchKnowledgeUseCaseTests.cs`:
 
@@ -3056,12 +3056,12 @@ public sealed class SearchKnowledgeUseCaseTests
 }
 ```
 
-- [ ] **Step 2: テストが失敗することを確認する**
+- [x] **Step 2: テストが失敗することを確認する**
 
 Run: `dotnet test tests/CodeKnowledge.Core.Tests`
 Expected: コンパイルエラーで失敗。
 
-- [ ] **Step 3: SearchKnowledgeUseCaseを実装する**
+- [x] **Step 3: SearchKnowledgeUseCaseを実装する**
 
 `src/CodeKnowledge.Core/Search/SearchKnowledgeUseCase.cs`:
 
@@ -3147,12 +3147,12 @@ public sealed class SearchKnowledgeUseCase(
 }
 ```
 
-- [ ] **Step 4: Coreテストが成功することを確認する**
+- [x] **Step 4: Coreテストが成功することを確認する**
 
 Run: `dotnet test tests/CodeKnowledge.Core.Tests`
 Expected: PASS。
 
-- [ ] **Step 5: 失敗するStore統合テストを書く**
+- [x] **Step 5: 失敗するStore統合テストを書く**
 
 `tests/CodeKnowledge.Infrastructure.Tests/SqliteKnowledgeStoreSearchTests.cs`:
 
@@ -3259,7 +3259,7 @@ public sealed class SqliteKnowledgeStoreSearchTests : IDisposable
 }
 ```
 
-- [ ] **Step 6: Storeの検索メソッドを実装する**
+- [x] **Step 6: Storeの検索メソッドを実装する**
 
 `src/CodeKnowledge.Infrastructure/Stores/SqliteKnowledgeStore.cs`の`SearchFts`・`SearchLike`を置き換える:
 
@@ -3331,12 +3331,12 @@ public sealed class SqliteKnowledgeStoreSearchTests : IDisposable
     }
 ```
 
-- [ ] **Step 7: 統合テストが成功することを確認する**
+- [x] **Step 7: 統合テストが成功することを確認する**
 
 Run: `dotnet test tests/CodeKnowledge.Infrastructure.Tests`
 Expected: PASS。
 
-- [ ] **Step 8: コミット**
+- [x] **Step 8: コミット**
 
 ```bash
 git add src/CodeKnowledge.Core/Search src/CodeKnowledge.Infrastructure/Stores tests/
