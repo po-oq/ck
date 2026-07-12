@@ -20,6 +20,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\CodeKnowledge.Core\CodeKnowledge.Core.csproj" />
     <ProjectReference Include="..\..\src\CodeKnowledge.Infrastructure\CodeKnowledge.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\CodeKnowledge.Mcp\CodeKnowledge.Mcp.csproj" />
   </ItemGroup>
 
 </Project>
