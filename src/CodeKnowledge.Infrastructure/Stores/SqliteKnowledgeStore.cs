@@ -151,10 +151,70 @@ public sealed class SqliteKnowledgeStore(SqliteConnectionFactory factory) : IKno
         => throw new NotSupportedException("Implemented in a later task.");
 
     public IReadOnlyList<FtsSearchHit> SearchFts(string projectId, string matchExpression, int limit)
-        => throw new NotSupportedException("Implemented in a later task.");
+    {
+        using var connection = factory.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT k.id, k.canonical_key, k.title, v.summary, v.commit_hash, v.confidence, k.updated_at,
+                   bm25(knowledge_fts) AS score,
+                   knowledge_fts.title || char(10) || knowledge_fts.original_question || char(10) ||
+                   knowledge_fts.summary || char(10) || knowledge_fts.facts || char(10) ||
+                   knowledge_fts.inferences || char(10) || knowledge_fts.tags || char(10) ||
+                   knowledge_fts.symbol_names || char(10) || knowledge_fts.symbol_ids || char(10) ||
+                   knowledge_fts.file_paths || char(10) || knowledge_fts.canonical_key AS search_text
+            FROM knowledge_fts
+            JOIN knowledge k ON k.id = knowledge_fts.knowledge_id
+            JOIN knowledge_versions v ON v.id = k.current_version_id
+            WHERE knowledge_fts MATCH @match AND knowledge_fts.project_id = @project
+            ORDER BY score
+            LIMIT @limit;
+            """;
+        command.Parameters.AddWithValue("@match", matchExpression);
+        command.Parameters.AddWithValue("@project", projectId);
+        command.Parameters.AddWithValue("@limit", limit);
+        using var reader = command.ExecuteReader();
+        var hits = new List<FtsSearchHit>();
+        while (reader.Read())
+            hits.Add(new FtsSearchHit(ReadSummary(reader), reader.GetDouble(7), reader.GetString(8)));
+        return hits;
+    }
 
     public IReadOnlyList<LikeSearchHit> SearchLike(string projectId, IReadOnlyList<string> likePatterns)
-        => throw new NotSupportedException("Implemented in a later task.");
+    {
+        if (likePatterns.Count == 0)
+            return [];
+        using var connection = factory.Open();
+        using var command = connection.CreateCommand();
+        // 要件8.3: LIKEルートは実テーブルを走査し、ファイルパスは対象外とする
+        var conditions = string.Join(" OR ", likePatterns.Select(
+            (_, index) => $"search_text LIKE @like{index} ESCAPE '\\'"));
+        command.CommandText = $"""
+            SELECT * FROM (
+                SELECT k.id, k.canonical_key, k.title, v.summary, v.commit_hash, v.confidence, k.updated_at,
+                       k.title || char(10) || v.original_question || char(10) || v.summary || char(10) ||
+                       v.tags || char(10) || k.canonical_key || char(10) ||
+                       IFNULL((SELECT group_concat(f.text, char(10)) FROM facts f
+                               WHERE f.knowledge_version_id = v.id), '') || char(10) ||
+                       IFNULL((SELECT group_concat(i.text || char(10) || i.reason, char(10)) FROM inferences i
+                               WHERE i.knowledge_version_id = v.id), '') || char(10) ||
+                       IFNULL((SELECT group_concat(e.symbol_name || char(10) || IFNULL(e.symbol_id, ''), char(10))
+                               FROM evidence e WHERE e.knowledge_version_id = v.id), '')
+                       AS search_text
+                FROM knowledge k
+                JOIN knowledge_versions v ON v.id = k.current_version_id
+                WHERE k.project_id = @project
+            )
+            WHERE {conditions};
+            """;
+        command.Parameters.AddWithValue("@project", projectId);
+        for (var index = 0; index < likePatterns.Count; index++)
+            command.Parameters.AddWithValue($"@like{index}", likePatterns[index]);
+        using var reader = command.ExecuteReader();
+        var hits = new List<LikeSearchHit>();
+        while (reader.Read())
+            hits.Add(new LikeSearchHit(ReadSummary(reader), reader.GetString(7)));
+        return hits;
+    }
 
     internal static KnowledgeSummary ReadSummary(SqliteDataReader reader)
     {
