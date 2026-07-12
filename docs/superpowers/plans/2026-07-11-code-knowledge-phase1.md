@@ -4078,7 +4078,7 @@ git commit -m "test: add published exe end-to-end tests over mcp stdio"
 - Consumes: 設計書9章、要件10.10・11章
 - Produces: 利用者向けドキュメント一式
 
-- [ ] **Step 1: READMEを書く**
+- [x] **Step 1: READMEを書く**
 
 `README.md`に以下の章立てで記載する（値はすべて実測・実物に合わせる）:
 
@@ -4096,7 +4096,7 @@ dotnet publish src/CodeKnowledge.Mcp/CodeKnowledge.Mcp.csproj --configuration Re
 6. **検証記録** — Phase 0 READMEと同形式の表（自動テスト結果、発行成果物一覧、Claude Code実機検証、Cursor / Copilotは対象外の注記）。このタスクの時点では実機検証行を`未実施`とする。
 7. **要件からの変更点** — 設計書11章のDeviations 3点を要約して転記。
 
-- [ ] **Step 2: コミット**
+- [x] **Step 2: コミット**
 
 ```bash
 git add README.md
