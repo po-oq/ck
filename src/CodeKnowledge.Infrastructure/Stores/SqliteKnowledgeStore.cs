@@ -149,7 +149,126 @@ public sealed class SqliteKnowledgeStore(SqliteConnectionFactory factory) : IKno
     }
 
     public KnowledgeDetail? GetDetail(string projectId, string knowledgeId, string? versionId)
-        => throw new NotSupportedException("Implemented in a later task.");
+    {
+        using var connection = factory.Open();
+        using var headerCommand = connection.CreateCommand();
+        headerCommand.CommandText = """
+            SELECT k.id, k.canonical_key, k.title, v.id, v.commit_hash, v.branch_name,
+                   v.original_question, v.summary, v.confidence, v.tags, v.created_by, v.created_at
+            FROM knowledge k
+            JOIN knowledge_versions v
+              ON v.knowledge_id = k.id
+             AND v.id = IFNULL(@version, k.current_version_id)
+            WHERE k.id = @knowledge AND k.project_id = @project;
+            """;
+        headerCommand.Parameters.AddWithValue("@knowledge", knowledgeId);
+        headerCommand.Parameters.AddWithValue("@project", projectId);
+        headerCommand.Parameters.AddWithValue("@version", (object?)versionId ?? DBNull.Value);
+        using var headerReader = headerCommand.ExecuteReader();
+        if (!headerReader.Read())
+            return null;
+
+        ConfidenceParser.TryParse(headerReader.GetString(8), out var confidence);
+        var resolvedVersionId = headerReader.GetString(3);
+
+        return new KnowledgeDetail(
+            headerReader.GetString(0), headerReader.GetString(1), headerReader.GetString(2),
+            resolvedVersionId, headerReader.GetString(4),
+            headerReader.IsDBNull(5) ? null : headerReader.GetString(5),
+            headerReader.GetString(6), headerReader.GetString(7), confidence,
+            headerReader.GetString(9), headerReader.GetString(10),
+            DateTimeOffset.Parse(headerReader.GetString(11)),
+            ReadFacts(connection, resolvedVersionId),
+            ReadInferences(connection, resolvedVersionId),
+            ReadEvidence(connection, resolvedVersionId),
+            ReadRelations(connection, resolvedVersionId));
+    }
+
+    private static List<FactRecord> ReadFacts(SqliteConnection connection, string versionId)
+    {
+        var facts = new List<FactRecord>();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT f.id, f.text,
+                   IFNULL((SELECT group_concat(fe.evidence_id, ',') FROM fact_evidence fe
+                           WHERE fe.fact_id = f.id), '')
+            FROM facts f
+            WHERE f.knowledge_version_id = @version
+            ORDER BY f.sort_order;
+            """;
+        command.Parameters.AddWithValue("@version", versionId);
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+            facts.Add(new FactRecord(reader.GetString(0), reader.GetString(1),
+                SplitIds(reader.GetString(2))));
+        return facts;
+    }
+
+    private static List<InferenceRecord> ReadInferences(SqliteConnection connection, string versionId)
+    {
+        var inferences = new List<InferenceRecord>();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT i.id, i.text, i.confidence, i.reason,
+                   IFNULL((SELECT group_concat(ie.evidence_id, ',') FROM inference_evidence ie
+                           WHERE ie.inference_id = i.id), '')
+            FROM inferences i
+            WHERE i.knowledge_version_id = @version
+            ORDER BY i.sort_order;
+            """;
+        command.Parameters.AddWithValue("@version", versionId);
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+        {
+            ConfidenceParser.TryParse(reader.GetString(2), out var confidence);
+            inferences.Add(new InferenceRecord(reader.GetString(0), reader.GetString(1),
+                confidence, reader.GetString(3), SplitIds(reader.GetString(4))));
+        }
+        return inferences;
+    }
+
+    private static List<EvidenceRecord> ReadEvidence(SqliteConnection connection, string versionId)
+    {
+        var records = new List<EvidenceRecord>();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT id, file_path, symbol_id, symbol_name, symbol_kind, signature,
+                   start_line, end_line, commit_hash, file_hash, symbol_hash, reason
+            FROM evidence WHERE knowledge_version_id = @version;
+            """;
+        command.Parameters.AddWithValue("@version", versionId);
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+            records.Add(new EvidenceRecord(
+                reader.GetString(0), reader.GetString(1),
+                reader.IsDBNull(2) ? null : reader.GetString(2),
+                reader.GetString(3),
+                reader.IsDBNull(4) ? null : reader.GetString(4),
+                reader.IsDBNull(5) ? null : reader.GetString(5),
+                reader.IsDBNull(6) ? null : reader.GetInt32(6),
+                reader.IsDBNull(7) ? null : reader.GetInt32(7),
+                reader.GetString(8), reader.GetString(9),
+                reader.IsDBNull(10) ? null : reader.GetString(10),
+                reader.IsDBNull(11) ? null : reader.GetString(11)));
+        return records;
+    }
+
+    private static List<RelationRecord> ReadRelations(SqliteConnection connection, string versionId)
+    {
+        var relations = new List<RelationRecord>();
+        using var command = connection.CreateCommand();
+        command.CommandText =
+            "SELECT id, from_symbol, to_symbol, kind FROM relations WHERE knowledge_version_id = @version;";
+        command.Parameters.AddWithValue("@version", versionId);
+        using var reader = command.ExecuteReader();
+        while (reader.Read())
+            relations.Add(new RelationRecord(reader.GetString(0), reader.GetString(1),
+                reader.GetString(2), reader.GetString(3)));
+        return relations;
+    }
+
+    private static IReadOnlyList<string> SplitIds(string joined)
+        => joined.Length == 0 ? [] : joined.Split(',');
 
     public IReadOnlyList<FtsSearchHit> SearchFts(string projectId, string matchExpression, int limit)
     {
