@@ -3842,7 +3842,7 @@ git commit -m "feat: add mcp stdio adapter exposing four knowledge tools"
 
 注意: MCPプロトコルクライアントの正確なAPI使用例は`spikes/phase0/CodeKnowledge.Phase0.Tests/McpProbeTests.cs`にPhase 0で実証済みの形がある。テストコードの書き方の参照は許可する（本番コードへの昇格禁止とは別問題）。`TestGitRepo`はInfrastructure.Testsのものと同内容をMcp.Testsへも作成する（テストプロジェクト間の共有プロジェクトは作らない。重複を許容する）。
 
-- [ ] **Step 1: 発行フィクスチャを書く**
+- [x] **Step 1: 発行フィクスチャを書く**
 
 `tests/CodeKnowledge.Mcp.Tests/PublishedServerFixture.cs`:
 
@@ -3901,7 +3901,7 @@ public sealed class PublishedServerFixture : IDisposable
 }
 ```
 
-- [ ] **Step 2: 失敗するE2Eテストを書く**
+- [x] **Step 2: 失敗するE2Eテストを書く**
 
 `tests/CodeKnowledge.Mcp.Tests/McpEndToEndTests.cs`（`TestGitRepo`はInfrastructure.Testsと同内容をこのプロジェクトへコピーして使う）:
 
@@ -4051,16 +4051,16 @@ public sealed class McpEndToEndTests : IClassFixture<PublishedServerFixture>, ID
 
 注意: `CallToolAsync`の戻り値型・`IsError`・`StructuredContent`・エラー時の挙動（`McpException`がスローされるかIsErrorレスポンスになるか）はModelContextProtocol 1.4.1の実際のAPIに合わせて調整する。エラーがスローされる場合は`Assert.ThrowsAsync<McpException>`へ書き換え、メッセージに`git_repository_required`が含まれることを検証する。未使用の`Structured`ヘルパーは削除する。
 
-- [ ] **Step 3: E2Eテストを実行して調整する**
+- [x] **Step 3: E2Eテストを実行して調整する**
 
 Run: `dotnet test tests/CodeKnowledge.Mcp.Tests --configuration Release`
 Expected: PASS（発行に数十秒かかる）。
 
-- [ ] **Step 4: stdout純度を確認する**
+- [x] **Step 4: stdout純度を確認する**
 
 発行EXEを直接起動し、initializeリクエストを送ってstdoutにJSON-RPC以外が混ざらないことをE2Eが実質担保している（プロトコルクライアントが接続に成功する = stdout汚染なし）。追加の手動確認は不要。
 
-- [ ] **Step 5: コミット**
+- [x] **Step 5: コミット**
 
 ```bash
 git add tests/CodeKnowledge.Mcp.Tests
