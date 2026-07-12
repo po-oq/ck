@@ -55,5 +55,35 @@ public sealed class SqliteKnowledgeStoreGetTests : IDisposable
         Assert.Null(Store.GetDetail("github.com/other/repo", saved.KnowledgeId, null));
     }
 
+    [Fact]
+    public void GetDetail_returns_null_for_version_of_different_knowledge()
+    {
+        var savedA = Store.SaveVersion(SqliteKnowledgeStoreSaveTests.Sample());
+        var savedB = Store.SaveVersion(SqliteKnowledgeStoreSaveTests.Sample(
+            canonicalKey: "domain.mail.order-cancelled", title: "注文キャンセルメール仕様"));
+
+        Assert.Null(Store.GetDetail(
+            "github.com/company/order-api", savedB.KnowledgeId, savedA.VersionId));
+    }
+
+    [Fact]
+    public void GetDetail_returns_empty_lists_when_inferences_and_relations_absent()
+    {
+        var saved = Store.SaveVersion(SqliteKnowledgeStoreSaveTests.Sample() with
+        {
+            Inferences = [],
+            Relations = [],
+        });
+
+        var detail = Store.GetDetail("github.com/company/order-api", saved.KnowledgeId, null);
+
+        Assert.NotNull(detail);
+        Assert.Single(detail.Facts);
+        Assert.NotNull(detail.Inferences);
+        Assert.Empty(detail.Inferences);
+        Assert.NotNull(detail.Relations);
+        Assert.Empty(detail.Relations);
+    }
+
     public void Dispose() => _db.Dispose();
 }
