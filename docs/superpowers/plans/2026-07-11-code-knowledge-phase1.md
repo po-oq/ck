@@ -1145,7 +1145,7 @@ git commit -m "feat: add git cli adapter resolving repository context"
 - Consumes: `GitContext`、`CodeKnowledgeException`
 - Produces: `RemoteUrlNormalizer.Normalize(string url) -> string`、`ProjectIdResolver.Resolve(GitContext) -> ProjectIdentity(string ProjectId, string Source, string? NormalizedRemoteUrl, string DisplayName)`（Sourceは`config` / `remote` / `local`）
 
-- [ ] **Step 1: 失敗するテストを書く**
+- [x] **Step 1: 失敗するテストを書く**
 
 `tests/CodeKnowledge.Core.Tests/RemoteUrlNormalizerTests.cs`:
 
@@ -1278,12 +1278,12 @@ public sealed class ProjectIdResolverTests
 }
 ```
 
-- [ ] **Step 2: テストが失敗することを確認する**
+- [x] **Step 2: テストが失敗することを確認する**
 
 Run: `dotnet test tests/CodeKnowledge.Core.Tests`
 Expected: コンパイルエラーで失敗。
 
-- [ ] **Step 3: 最小実装を書く**
+- [x] **Step 3: 最小実装を書く**
 
 `src/CodeKnowledge.Core/Projects/RemoteUrlNormalizer.cs`:
 
@@ -1410,12 +1410,12 @@ public static class ProjectIdResolver
 }
 ```
 
-- [ ] **Step 4: テストが成功することを確認する**
+- [x] **Step 4: テストが成功することを確認する**
 
 Run: `dotnet test tests/CodeKnowledge.Core.Tests`
 Expected: PASS。
 
-- [ ] **Step 5: コミット**
+- [x] **Step 5: コミット**
 
 ```bash
 git add src/CodeKnowledge.Core/Projects tests/CodeKnowledge.Core.Tests
@@ -1466,7 +1466,7 @@ public sealed class ResolveProjectUseCase(IGitRepository git, IProjectStore stor
 }
 ```
 
-- [ ] **Step 1: フェイクと失敗するテストを書く**
+- [x] **Step 1: フェイクと失敗するテストを書く**
 
 `tests/CodeKnowledge.Core.Tests/Fakes/FakeGitRepository.cs`:
 
@@ -1592,12 +1592,12 @@ public sealed class ResolveProjectUseCaseTests
 }
 ```
 
-- [ ] **Step 2: テストが失敗することを確認する**
+- [x] **Step 2: テストが失敗することを確認する**
 
 Run: `dotnet test tests/CodeKnowledge.Core.Tests`
 Expected: コンパイルエラーで失敗。
 
-- [ ] **Step 3: Core実装を書く**
+- [x] **Step 3: Core実装を書く**
 
 `src/CodeKnowledge.Core/Projects/IProjectStore.cs`:
 
@@ -1673,12 +1673,12 @@ public sealed class ResolveProjectUseCase(IGitRepository git, IProjectStore stor
 }
 ```
 
-- [ ] **Step 4: Coreテストが成功することを確認する**
+- [x] **Step 4: Coreテストが成功することを確認する**
 
 Run: `dotnet test tests/CodeKnowledge.Core.Tests`
 Expected: PASS。
 
-- [ ] **Step 5: SqliteProjectStoreの失敗する統合テストを書く**
+- [x] **Step 5: SqliteProjectStoreの失敗する統合テストを書く**
 
 `tests/CodeKnowledge.Infrastructure.Tests/SqliteProjectStoreTests.cs`:
 
@@ -1733,7 +1733,7 @@ public sealed class SqliteProjectStoreTests : IDisposable
 }
 ```
 
-- [ ] **Step 6: SqliteProjectStoreを実装する**
+- [x] **Step 6: SqliteProjectStoreを実装する**
 
 `src/CodeKnowledge.Infrastructure/Stores/SqliteProjectStore.cs`:
 
@@ -1807,12 +1807,12 @@ public sealed class SqliteProjectStore(SqliteConnectionFactory factory) : IProje
 }
 ```
 
-- [ ] **Step 7: 統合テストが成功することを確認する**
+- [x] **Step 7: 統合テストが成功することを確認する**
 
 Run: `dotnet test tests/CodeKnowledge.Infrastructure.Tests`
 Expected: PASS。
 
-- [ ] **Step 8: コミット**
+- [x] **Step 8: コミット**
 
 ```bash
 git add src/CodeKnowledge.Core/Projects src/CodeKnowledge.Infrastructure/Stores tests/
