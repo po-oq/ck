@@ -4140,7 +4140,7 @@ git add README.md .mcp.json
 git commit -m "docs: record phase 1 verification results"
 ```
 
-- [ ] **Step 4: ユーザー承認と要件定義書のチェック**
+- [x] **Step 4: ユーザー承認と要件定義書のチェック**
 
 ユーザーがPhase 1完了を承認したら、`docs/code-knowledge-tool-requirements-v2.md`の14章「Phase 1: 最小実用版」の各項目へ`[x]`と注記を付け、`docs: record phase 1 completion approval`としてコミットする（Phase 0と同じ運用）。承認が得られるまでPhase 2へ進まない。
 
