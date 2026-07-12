@@ -23,8 +23,12 @@ public static class RemoteUrlNormalizer
             }
         }
 
-        // ルール3の前半: 認証情報の区切り（@）より後ろをホスト部として扱う
-        var atIndex = value.IndexOf('@');
+        // ルール3の前半: 認証情報の区切りはパス開始（最初の/）より前の最後の@。
+        // 未エンコードの@を含むユーザー名（user@corp.com:token@host）も全体を除去し、
+        // パス中の@は区切りとして扱わない
+        var pathStart = value.IndexOf('/');
+        var hostAndAuth = pathStart < 0 ? value : value[..pathStart];
+        var atIndex = hostAndAuth.LastIndexOf('@');
         var afterAt = atIndex >= 0 ? value[(atIndex + 1)..] : value;
 
         // IPv6ブラケットホスト（[2001:db8::1]）は]までをホストとして扱い、

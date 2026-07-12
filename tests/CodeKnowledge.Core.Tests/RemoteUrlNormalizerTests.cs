@@ -38,4 +38,19 @@ public sealed class RemoteUrlNormalizerTests
         Assert.DoesNotContain("user", normalized);
         Assert.DoesNotContain("secret", normalized);
     }
+
+    [Fact]
+    public void Normalize_strips_email_style_username_with_token() // AC-16
+    {
+        // 未エンコードの@を含むユーザー名: パス開始（最初の/）より前の最後の@までを認証情報として除去する
+        Assert.Equal("github.com/a/b",
+            RemoteUrlNormalizer.Normalize("https://user@corp.com:token@github.com/a/b.git"));
+    }
+
+    [Fact]
+    public void At_sign_after_path_start_is_not_a_credential_delimiter()
+    {
+        Assert.Equal("h.example/a@b",
+            RemoteUrlNormalizer.Normalize("https://h.example/a@b"));
+    }
 }
