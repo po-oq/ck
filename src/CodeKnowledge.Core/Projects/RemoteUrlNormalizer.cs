@@ -1,5 +1,9 @@
 namespace CodeKnowledge.Core.Projects;
 
+/// <remarks>
+/// Phase 1の既知の制限: Windowsドライブレター形式のローカルパスリモート
+/// （例: C:\Backups\repo.git）は正規化ルールの対象外（scp形式として誤変換される）。
+/// </remarks>
 public static class RemoteUrlNormalizer
 {
     /// <summary>要件5.3.2の8ルールを順に適用する。</summary>
@@ -8,24 +12,39 @@ public static class RemoteUrlNormalizer
         var value = url.Trim().Replace('\\', '/'); // ルール8: パス区切り統一
 
         // ルール2: スキーム除去
+        var hadScheme = false;
         foreach (var scheme in new[] { "https://", "http://", "ssh://", "git://" })
         {
             if (value.StartsWith(scheme, StringComparison.OrdinalIgnoreCase))
             {
                 value = value[scheme.Length..];
+                hadScheme = true;
                 break;
             }
         }
 
-        // ルール1: scp形式（git@host:path）をhost/pathへ変換
-        // 認証情報除去より先に判定する。「@より後ろで最初の:が/より前」ならscp形式
+        // ルール3の前半: 認証情報の区切り（@）より後ろをホスト部として扱う
         var atIndex = value.IndexOf('@');
         var afterAt = atIndex >= 0 ? value[(atIndex + 1)..] : value;
-        var colonIndex = afterAt.IndexOf(':');
-        var slashIndex = afterAt.IndexOf('/');
+
+        // IPv6ブラケットホスト（[2001:db8::1]）は]までをホストとして扱い、
+        // :や/の探索は]より後ろから始める
+        var searchStart = 0;
+        if (afterAt.StartsWith('['))
+        {
+            var closingBracket = afterAt.IndexOf(']');
+            if (closingBracket >= 0)
+                searchStart = closingBracket + 1;
+        }
+
+        // ルール1: scp形式（git@host:path）をhost/pathへ変換
+        // scp形式（スキームなし）ではホスト直後の:は常にパス区切りであり、ポートの概念はない。
+        // ポート判定（host:NNNN/）はスキームが明示された場合にのみ適用する（ルール4）
+        var colonIndex = afterAt.IndexOf(':', searchStart);
+        var slashIndex = afterAt.IndexOf('/', searchStart);
         var isScpStyle = colonIndex > 0 &&
             (slashIndex < 0 || colonIndex < slashIndex) &&
-            !IsPortNumber(afterAt, colonIndex);
+            !(hadScheme && IsPortNumber(afterAt, colonIndex));
         if (isScpStyle)
             afterAt = afterAt[..colonIndex] + "/" + afterAt[(colonIndex + 1)..];
 

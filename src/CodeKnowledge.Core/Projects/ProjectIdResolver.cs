@@ -34,7 +34,10 @@ public static class ProjectIdResolver
         if (normalizedRemote is not null)
             return new ProjectIdentity(normalizedRemote, "remote", normalizedRemote, displayName);
 
-        var normalizedRoot = context.RepositoryRoot.Replace('\\', '/').ToLowerInvariant();
+        // 末尾区切りの有無でハッシュが変わらないよう、表示名と同じTrimEndを適用する（AC-17）
+        var normalizedRoot = context.RepositoryRoot
+            .TrimEnd(Path.DirectorySeparatorChar, '/')
+            .Replace('\\', '/').ToLowerInvariant();
         var hash = Convert.ToHexStringLower(
             SHA256.HashData(Encoding.UTF8.GetBytes(normalizedRoot)))[..16];
         return new ProjectIdentity($"local:{hash}", "local", null, displayName);

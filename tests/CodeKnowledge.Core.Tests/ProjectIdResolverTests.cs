@@ -82,6 +82,14 @@ public sealed class ProjectIdResolverTests
     }
 
     [Fact]
+    public void Local_fallback_ignores_trailing_separators() // AC-17
+    {
+        var first = ProjectIdResolver.Resolve(Context(root: @"C:\work\my-tool"));
+        var second = ProjectIdResolver.Resolve(Context(root: @"C:\work\my-tool\"));
+        Assert.Equal(first.ProjectId, second.ProjectId);
+    }
+
+    [Fact]
     public void Display_name_prefers_config_then_remote_then_directory()
     {
         Assert.Equal("Order API", ProjectIdResolver.Resolve(Context(

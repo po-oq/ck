@@ -13,9 +13,22 @@ public sealed class RemoteUrlNormalizerTests
     [InlineData("http://git.example.local:8443/Team/Order-System/", "git.example.local:8443/team/order-system")]
     [InlineData("git://github.com/a/b.git", "github.com/a/b")]
     [InlineData("https://github.com/a\\b", "github.com/a/b")]
+    // scp形式（スキームなし）の:は常にパス区切りであり、ポートとして解釈しない
+    [InlineData("git@example.com:22/my-repo.git", "example.com/22/my-repo")]
+    [InlineData("https://example.com/22/my-repo.git", "example.com/22/my-repo")]
+    // IPv6ブラケットホスト: []内の:はホストの一部、]の後の:22はポートとして保持
+    [InlineData("ssh://git@[2001:db8::1]:22/repo.git", "[2001:db8::1]:22/repo")]
     public void Normalize_applies_all_rules(string input, string expected)
     {
         Assert.Equal(expected, RemoteUrlNormalizer.Normalize(input));
+    }
+
+    [Fact]
+    public void Scp_style_and_https_form_of_same_repo_yield_same_id() // AC-15
+    {
+        Assert.Equal(
+            RemoteUrlNormalizer.Normalize("https://example.com/22/my-repo.git"),
+            RemoteUrlNormalizer.Normalize("git@example.com:22/my-repo.git"));
     }
 
     [Fact]
