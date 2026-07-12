@@ -1580,18 +1580,20 @@ DBファイルは全プロジェクト・全クライアントで共有され、
 
 ### Phase 1: 最小実用版
 
-- Domain / Application / Infrastructure / MCPの責務分離
-- Gitリポジトリ解決（CLIシェルアウト、9.6）
-- Project ID生成（正規化ルール、5.3）
-- SQLiteスキーマ＋マイグレーション基盤（12.2）
-- FTS5（trigram）＋ハイブリッド検索（8章）
-- `resolve_project`
-- `search_knowledge`
-- `get_knowledge`
-- `save_knowledge`（fact根拠必須バリデーション含む）
-- 最新確定バージョンのみ管理
-- Agent向け利用ルール
-- 将来CLIからApplication層を再利用できる構成
+- [x] Domain / Application / Infrastructure / MCPの責務分離
+- [x] Gitリポジトリ解決（CLIシェルアウト、9.6）
+- [x] Project ID生成（正規化ルール、5.3）
+- [x] SQLiteスキーマ＋マイグレーション基盤（12.2）
+- [x] FTS5（trigram）＋ハイブリッド検索（8章）
+- [x] `resolve_project`
+- [x] `search_knowledge`
+- [x] `get_knowledge`
+- [x] `save_knowledge`（fact根拠必須バリデーション含む）
+- [x] 最新確定バージョンのみ管理
+- [x] Agent向け利用ルール
+- [x] 将来CLIからApplication層を再利用できる構成
+
+**Phase 1は2026-07-13に全自動テスト、発行済みEXEのE2E、Claude Codeからの4 Tool実機検証、ドキュメント整備を完了し、ユーザーが完了を承認した。検証記録は`README.md`を参照。**
 
 ### Phase 2: 鮮度検証
 

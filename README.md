@@ -249,6 +249,6 @@ Get-ChildItem -File artifacts/mcp/win-x64 | Select-Object Name,Length
 - [x] Claude Codeから4 Toolを実機で呼び出し、「保存 → 検索 → 取得」が実リポジトリで成功
 - [x] Cursor / GitHub Copilot in VS Codeの実機検証免除をDeviationsへ記録
 - [x] Agent行動ルールと3クライアントの設定手順を記録
-- [ ] ユーザーがPhase 1完了を承認
+- [x] ユーザーがPhase 1完了を承認（2026-07-13）
 
-すべての完了条件とユーザー承認が揃うまで、Phase 2へ進まない。
+2026-07-13、すべての完了条件とユーザー承認が揃い、Phase 1は完了した。Phase 2は別途計画・承認して開始する。
