@@ -23,8 +23,7 @@ public static class ProjectIdResolver
         if (context.ConfigProjectId is not null)
         {
             var configured = context.ConfigProjectId.Trim();
-            if (configured.Length == 0 || configured.Contains('@') ||
-                configured != RemoteUrlNormalizer.Normalize(configured))
+            if (!IsNormalizedProjectId(configured))
                 throw new CodeKnowledgeException(
                     CodeKnowledgeException.InvalidArguments,
                     "codeknowledge.projectId must be a normalized project id without credentials.");
@@ -42,6 +41,20 @@ public static class ProjectIdResolver
             SHA256.HashData(Encoding.UTF8.GetBytes(normalizedRoot)))[..16];
         return new ProjectIdentity($"local:{hash}", "local", null, displayName);
     }
+
+    /// <summary>
+    /// 正規化済みプロジェクトIDの性質を直接検査する。
+    /// Normalizeの再適用（フィックスポイント判定）はポートを含む正規形
+    /// （例: git.example.local:8443/team/order-system）を壊すため使わない。
+    /// </summary>
+    private static bool IsNormalizedProjectId(string value)
+        => !string.IsNullOrWhiteSpace(value) &&
+           !value.Contains('@') &&
+           !value.Contains("://", StringComparison.Ordinal) &&
+           !value.Contains('\\') &&
+           value == value.ToLowerInvariant() &&
+           !value.EndsWith('/') &&
+           !value.EndsWith(".git", StringComparison.Ordinal);
 
     private static string? SelectRemote(IReadOnlyDictionary<string, string> remotes)
     {

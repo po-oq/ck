@@ -28,11 +28,25 @@ public sealed class ProjectIdResolverTests
     [Theory]
     [InlineData("")]
     [InlineData("https://user:pw@github.com/a/b")]
+    [InlineData("HTTPS://github.com/a/b")]
+    [InlineData("github.com/a/b/")]
+    [InlineData("github.com/a/b.git")]
     public void Invalid_config_project_id_is_rejected(string configured)
     {
         var exception = Assert.Throws<CodeKnowledgeException>(() =>
             ProjectIdResolver.Resolve(Context(configProjectId: configured)));
         Assert.Equal(CodeKnowledgeException.InvalidArguments, exception.Code);
+    }
+
+    // 正規化済みIDはポートやIPv6ブラケットを含んでいても設定値として受理される（要件5.3.1 / 5.7）
+    [Theory]
+    [InlineData("git.example.local:8443/team/order-system")]
+    [InlineData("[2001:db8::1]:22/repo")]
+    public void Normalized_config_project_id_with_port_is_accepted(string configured)
+    {
+        var identity = ProjectIdResolver.Resolve(Context(configProjectId: configured));
+        Assert.Equal(configured, identity.ProjectId);
+        Assert.Equal("config", identity.Source);
     }
 
     [Fact]
