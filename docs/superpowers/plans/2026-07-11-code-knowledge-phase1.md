@@ -3356,7 +3356,7 @@ git commit -m "feat: add hybrid fts and like search with merge ranking"
 - Consumes: `IKnowledgeStore`、`ResolveProjectUseCase`、`KnowledgeDetail`
 - Produces: `GetKnowledgeUseCase(ResolveProjectUseCase, IKnowledgeStore).Execute(string workingDirectory, string knowledgeId, string? versionId) -> KnowledgeDetail`（見つからなければ`knowledge_not_found`）
 
-- [ ] **Step 1: 失敗する統合テストを書く**
+- [x] **Step 1: 失敗する統合テストを書く**
 
 `tests/CodeKnowledge.Infrastructure.Tests/SqliteKnowledgeStoreGetTests.cs`:
 
@@ -3422,12 +3422,12 @@ public sealed class SqliteKnowledgeStoreGetTests : IDisposable
 }
 ```
 
-- [ ] **Step 2: テストが失敗することを確認する**
+- [x] **Step 2: テストが失敗することを確認する**
 
 Run: `dotnet test tests/CodeKnowledge.Infrastructure.Tests`
 Expected: `GetDetail`が`NotSupportedException`のため失敗。
 
-- [ ] **Step 3: `GetDetail`とユースケースを実装する**
+- [x] **Step 3: `GetDetail`とユースケースを実装する**
 
 `SqliteKnowledgeStore.GetDetail`を置き換える:
 
@@ -3578,12 +3578,12 @@ public sealed class GetKnowledgeUseCase(
 }
 ```
 
-- [ ] **Step 4: テストが成功することを確認する**
+- [x] **Step 4: テストが成功することを確認する**
 
 Run: `dotnet test CodeKnowledge.slnx`
 Expected: 全テストPASS。
 
-- [ ] **Step 5: コミット**
+- [x] **Step 5: コミット**
 
 ```bash
 git add src/CodeKnowledge.Core/Knowledge src/CodeKnowledge.Infrastructure/Stores tests/
@@ -3604,7 +3604,7 @@ git commit -m "feat: add get knowledge use case returning full detail"
 - Consumes: 4ユースケース、`DatabasePathResolver`、`MigrationRunner`、`CodeKnowledgeException`
 - Produces: MCP Tool `resolve_project` / `search_knowledge` / `get_knowledge` / `save_knowledge`。エラーは`McpException`のメッセージ先頭に`<code>: `を付けて返す
 
-- [ ] **Step 1: Mcp.TestsへMcpプロジェクト参照を追加し、失敗するテストを書く**
+- [x] **Step 1: Mcp.TestsへMcpプロジェクト参照を追加し、失敗するテストを書く**
 
 Run: `dotnet add tests/CodeKnowledge.Mcp.Tests/CodeKnowledge.Mcp.Tests.csproj reference src/CodeKnowledge.Mcp/CodeKnowledge.Mcp.csproj`
 
@@ -3645,12 +3645,12 @@ public sealed class ToolGuardTests
 }
 ```
 
-- [ ] **Step 2: テストが失敗することを確認する**
+- [x] **Step 2: テストが失敗することを確認する**
 
 Run: `dotnet test tests/CodeKnowledge.Mcp.Tests`
 Expected: コンパイルエラーで失敗。
 
-- [ ] **Step 3: ToolGuard・Tool・Programを実装する**
+- [x] **Step 3: ToolGuard・Tool・Programを実装する**
 
 `src/CodeKnowledge.Mcp/Tools/ToolGuard.cs`:
 
@@ -3816,12 +3816,12 @@ await builder.Build().RunAsync();
 return 0;
 ```
 
-- [ ] **Step 4: テストとビルドが成功することを確認する**
+- [x] **Step 4: テストとビルドが成功することを確認する**
 
 Run: `dotnet test CodeKnowledge.slnx`
 Expected: 全テストPASS。
 
-- [ ] **Step 5: コミット**
+- [x] **Step 5: コミット**
 
 ```bash
 git add src/CodeKnowledge.Mcp tests/CodeKnowledge.Mcp.Tests
