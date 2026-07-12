@@ -151,6 +151,21 @@ public sealed class McpEndToEndTests : IClassFixture<PublishedServerFixture>, ID
             // SDKが付ける可変プレフィックスの後ろに "<code>: " を部分文字列として含む。
             // 構造化{code, message}オブジェクトではないため、部分一致で照合する。
             Assert.Contains("git_repository_required: ", text);
+
+            // AC-13の「永続化しない」を実データで検証する。DBファイル自体はサーバー
+            // 起動時のmigration(Program.cs)がツール呼び出しと無関係に必ず作成するため、
+            // File.Existsの否定では判定できない。正しい契約は「resolve_projectが失敗
+            // した場合、projects行が1件も書かれない」(ResolveProjectUseCaseはGit解決が
+            // 先に走り、失敗時はUpsertへ到達しない)なので、行数0を直接照合する。
+            // Pooling=False: 既定の接続プールはDispose後もファイルハンドルを保持し、
+            // テスト後の一時DBディレクトリ削除を妨げるため無効化する。
+            await using var verification = new SqliteConnection(
+                $"Data Source={DatabasePath};Pooling=False");
+            await verification.OpenAsync(TestContext.Current.CancellationToken);
+            await using var count = verification.CreateCommand();
+            count.CommandText = "SELECT COUNT(*) FROM projects;";
+            Assert.Equal(0L, Convert.ToInt64(
+                await count.ExecuteScalarAsync(TestContext.Current.CancellationToken)));
         }
         finally
         {
@@ -195,8 +210,10 @@ public sealed class McpEndToEndTests : IClassFixture<PublishedServerFixture>, ID
             Assert.NotEqual(true, warmupSave.IsError);
         }
 
+        // Pooling=False: 既定の接続プールはDispose後もファイルハンドルを保持し、
+        // テスト後の一時DBディレクトリ削除を妨げるため無効化する。
         await using var lockConnection = new SqliteConnection(
-            $"Data Source={DatabasePath};Mode=ReadWriteCreate");
+            $"Data Source={DatabasePath};Mode=ReadWriteCreate;Pooling=False");
         await lockConnection.OpenAsync(TestContext.Current.CancellationToken);
         await using (var pragma = lockConnection.CreateCommand())
         {
@@ -214,11 +231,13 @@ public sealed class McpEndToEndTests : IClassFixture<PublishedServerFixture>, ID
 
         // サーバー側のbusy_timeoutは5秒(SqliteConnectionFactory)。ロックを保持したまま
         // 別プロセス(発行済みEXE)から書き込みを試みる。実測: PRAGMA busy_timeoutの
-        // 公称値(5秒)よりかなり長く(観測値: 約35秒)待ってからSQLITE_BUSYが返る。
-        // WAL構成での他プロセスからの書き込み再試行の内部挙動によるものと見られるが、
-        // この差異自体の追調査(busy_timeoutチューニング)はタイムボックスしPhase 2へ
-        // 委ねる。ここではdatabase_busyへ正しくマッピングされることのみを検証する。
-        using var writeCts = new CancellationTokenSource(TimeSpan.FromSeconds(50));
+        // 公称値(5秒)よりかなり長く待ってからSQLITE_BUSYが返る(この開発機での測定値:
+        // 約35〜45秒。負荷やマシン差で変動する)。WAL構成での他プロセスからの書き込み
+        // 再試行の内部挙動によるものと見られるが、この差異自体の追調査(busy_timeout
+        // チューニング)はタイムボックスしPhase 2へ委ねる。ここではdatabase_busyへ
+        // 正しくマッピングされることのみを検証する。タイムアウト予算は実測値の
+        // 2倍超(120秒)を意図的に確保し、CI等の遅い環境でのフレークを避ける。
+        using var writeCts = new CancellationTokenSource(TimeSpan.FromSeconds(120));
         await using var writerClient = await ConnectAsync(writeCts.Token);
         var result = await writerClient.CallToolAsync(
             "save_knowledge", SaveArguments(_repo.Root), cancellationToken: writeCts.Token);
@@ -233,6 +252,24 @@ public sealed class McpEndToEndTests : IClassFixture<PublishedServerFixture>, ID
     public void Dispose()
     {
         _repo.Dispose();
-        try { Directory.Delete(_dbDirectory, recursive: true); } catch { }
+        // 終了させたサーバープロセスのDBファイルハンドル解放は非同期のため、
+        // 即時のDirectory.Deleteは競合して失敗し一時ディレクトリが残ることがある
+        // (Task 13品質レビューで実測)。短いリトライで解放を待ってから静かに諦める。
+        for (var attempt = 1; attempt <= 3; attempt++)
+        {
+            try
+            {
+                Directory.Delete(_dbDirectory, recursive: true);
+                return;
+            }
+            catch when (attempt < 3)
+            {
+                Thread.Sleep(500);
+            }
+            catch
+            {
+                // 3回失敗したら静かに諦める(OSの一時領域なのでリークは致命的でない)
+            }
+        }
     }
 }

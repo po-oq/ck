@@ -27,8 +27,14 @@ public sealed class PublishedServerFixture : IDisposable
         })
             startInfo.ArgumentList.Add(argument);
         using var process = Process.Start(startInfo)!;
-        var stdout = process.StandardOutput.ReadToEnd();
-        var stderr = process.StandardError.ReadToEnd();
+        // stdoutとstderrは並行に読み取る。逐次のReadToEndでは、後回しにした側の
+        // パイプバッファが満杯になると子プロセスが書き込みでブロックし、
+        // 親は読み終わらない側を待ち続けるデッドロックになり得る。
+        var stdoutTask = process.StandardOutput.ReadToEndAsync();
+        var stderrTask = process.StandardError.ReadToEndAsync();
+        Task.WaitAll(stdoutTask, stderrTask);
+        var stdout = stdoutTask.Result;
+        var stderr = stderrTask.Result;
         process.WaitForExit();
         if (process.ExitCode != 0)
             throw new InvalidOperationException($"publish failed: {stdout}\n{stderr}");
