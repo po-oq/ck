@@ -4123,7 +4123,7 @@ dotnet publish src/CodeKnowledge.Mcp/CodeKnowledge.Mcp.csproj --configuration Re
 
 Expected: 全テストPASS、発行成功。`superpowers:verification-before-completion`スキルに従い、実行結果を確認してから完了を主張する。
 
-- [ ] **Step 2: Claude Codeへ登録する**
+- [x] **Step 2: Claude Codeへ登録する**
 
 ```powershell
 claude mcp add --transport stdio --scope project code-knowledge -- "C:\zDev\repo\ck\artifacts\mcp\win-x64\CodeKnowledge.Mcp.exe"
@@ -4131,7 +4131,7 @@ claude mcp add --transport stdio --scope project code-knowledge -- "C:\zDev\repo
 
 新しいClaude Codeセッションで承認し、実リポジトリで「resolve_project → save_knowledge → search_knowledge → get_knowledge」の一連をユーザーが実行する。DBは既定パス（EXE隣接）で動作することを確認する。
 
-- [ ] **Step 3: 検証記録を更新してコミットする**
+- [x] **Step 3: 検証記録を更新してコミットする**
 
 READMEの検証記録へ、テスト件数、発行成果物一覧（`Get-ChildItem -File artifacts/mcp/win-x64`）、Claude Codeのバージョン・検証日・4 Toolの成否を実測で記入する。
 
