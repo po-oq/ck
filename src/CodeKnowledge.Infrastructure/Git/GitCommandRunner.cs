@@ -60,6 +60,9 @@ public static class GitCommandRunner
         var startInfo = new ProcessStartInfo("git")
         {
             WorkingDirectory = workingDirectory,
+            // stdio MCPサーバーとして動くとき、リダイレクトしないとgit.exeが
+            // ホストのJSON-RPC用stdinパイプを継承してブロックし全ツールがタイムアウトする
+            RedirectStandardInput = true,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             StandardOutputEncoding = Encoding.UTF8,

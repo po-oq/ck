@@ -209,6 +209,7 @@ CursorとGitHub Copilot in VS Codeの実機検証は、Phase 0と同様にユー
 | 1 | DB既定パスを`%LOCALAPPDATA%\CodeKnowledge\knowledge.db`からEXE隣接の`knowledge.db`へ変更。環境変数`CODEKNOWLEDGE_DB_PATH`で上書き可能 | DB位置の自明性とポータブル運用 | 2026-07-11ユーザー承認 |
 | 2 | `knowledge_versions.tags`を追加（要件6.2のモデルにない検索対象「タグ」の実現手段） | 要件8.2と6.2の不整合の解消 | 本設計で確定、要件へフィードバック |
 | 3 | 実機検証はClaude Codeのみ（要件2.1は3クライアント） | Cursor / Copilotの実施環境がない | 2026-07-11ユーザー承認（Phase 0と同判断） |
+| 4 | ツールのエラー契約は6章の構造化JSONオブジェクト`{code, message}`ではなく、`McpException`経由で`content[0].text`内の文字列`"{code}: {message}"`として表面化する（SDKが`An error occurred invoking 'x': ...`のような可変プレフィックスを付ける）。クライアントは`"<code>: "`を部分文字列として照合すること | ModelContextProtocol SDKのエラー表面仕様 | 2026-07-12レビュー（コーディネーター承認） |
 
 ## 12. 対象外
 

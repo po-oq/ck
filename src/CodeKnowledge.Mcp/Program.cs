@@ -13,6 +13,8 @@ using Microsoft.Extensions.Logging;
 
 var databasePath = DatabasePathResolver.Resolve();
 var connectionFactory = new SqliteConnectionFactory(databasePath);
+// DBロック待ちと「固まっている」をオペレーターが区別できるよう、移行前に一行だけ通知する
+await Console.Error.WriteLineAsync($"codeknowledge: applying migrations to {databasePath}");
 try
 {
     MigrationRunner.Apply(connectionFactory, databasePath);
@@ -20,6 +22,13 @@ try
 catch (CodeKnowledgeException exception)
 {
     await Console.Error.WriteLineAsync($"{exception.Code}: {exception.Message}");
+    return 1;
+}
+catch (Exception exception)
+{
+    // 生のスタックトレースではなく {code}: {message} + 非ゼロ終了の契約を守る
+    await Console.Error.WriteLineAsync(
+        $"{CodeKnowledgeException.InternalError}: {exception.GetType().Name}: {exception.Message}");
     return 1;
 }
 
