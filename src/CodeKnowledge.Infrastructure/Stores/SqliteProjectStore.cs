@@ -10,10 +10,23 @@ public sealed class SqliteProjectStore(SqliteConnectionFactory factory) : IProje
     public Project? FindById(string projectId)
         => Query("SELECT * FROM projects WHERE project_id = @key;", projectId);
 
-    public Project? FindByRepositoryRoot(string repositoryRoot)
-        => Query(
-            "SELECT * FROM projects WHERE repository_root = @key COLLATE NOCASE;",
-            repositoryRoot);
+    public IReadOnlyList<Project> FindStaleByRepositoryRoot(string repositoryRoot, string currentProjectId)
+    {
+        using var connection = factory.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT * FROM projects
+            WHERE repository_root = @root COLLATE NOCASE AND project_id != @currentId
+            ORDER BY updated_at DESC;
+            """;
+        command.Parameters.AddWithValue("@root", repositoryRoot);
+        command.Parameters.AddWithValue("@currentId", currentProjectId);
+        using var reader = command.ExecuteReader();
+        var projects = new List<Project>();
+        while (reader.Read())
+            projects.Add(ReadProject(reader));
+        return projects;
+    }
 
     public void Upsert(Project project)
     {
@@ -53,9 +66,11 @@ public sealed class SqliteProjectStore(SqliteConnectionFactory factory) : IProje
         command.CommandText = sql;
         command.Parameters.AddWithValue("@key", key);
         using var reader = command.ExecuteReader();
-        if (!reader.Read())
-            return null;
-        return new Project(
+        return reader.Read() ? ReadProject(reader) : null;
+    }
+
+    private static Project ReadProject(SqliteDataReader reader)
+        => new(
             reader.GetString(reader.GetOrdinal("project_id")),
             reader.GetString(reader.GetOrdinal("display_name")),
             reader.GetString(reader.GetOrdinal("repository_root")),
@@ -63,5 +78,4 @@ public sealed class SqliteProjectStore(SqliteConnectionFactory factory) : IProje
                 ? null : reader.GetString(reader.GetOrdinal("remote_url")),
             DateTimeOffset.Parse(reader.GetString(reader.GetOrdinal("created_at"))),
             DateTimeOffset.Parse(reader.GetString(reader.GetOrdinal("updated_at"))));
-    }
 }

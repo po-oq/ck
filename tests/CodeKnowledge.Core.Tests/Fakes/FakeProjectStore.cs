@@ -11,9 +11,13 @@ public sealed class FakeProjectStore : IProjectStore
     public Project? FindById(string projectId)
         => Projects.GetValueOrDefault(projectId);
 
-    public Project? FindByRepositoryRoot(string repositoryRoot)
-        => Projects.Values.FirstOrDefault(p =>
-            string.Equals(p.RepositoryRoot, repositoryRoot, StringComparison.OrdinalIgnoreCase));
+    public IReadOnlyList<Project> FindStaleByRepositoryRoot(string repositoryRoot, string currentProjectId)
+        => Projects.Values
+            .Where(p =>
+                string.Equals(p.RepositoryRoot, repositoryRoot, StringComparison.OrdinalIgnoreCase) &&
+                p.ProjectId != currentProjectId)
+            .OrderByDescending(p => p.UpdatedAt)
+            .ToList();
 
     public void Upsert(Project project) => Projects[project.ProjectId] = project;
 

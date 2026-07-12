@@ -31,10 +31,30 @@ public sealed class SqliteProjectStoreTests : IDisposable
     }
 
     [Fact]
-    public void FindByRepositoryRoot_matches_case_insensitively_on_windows_paths()
+    public void FindStaleByRepositoryRoot_matches_case_insensitively_on_windows_paths()
     {
         Store.Upsert(Sample());
-        Assert.NotNull(Store.FindByRepositoryRoot(@"c:\WORK\order-api"));
+        Assert.Single(Store.FindStaleByRepositoryRoot(@"c:\WORK\order-api", "some-other-id"));
+    }
+
+    [Fact]
+    public void FindStaleByRepositoryRoot_returns_all_non_current_rows_newest_first()
+    {
+        var root = @"C:\work\order-api";
+        Store.Upsert(new Project(
+            "local:3fa2b8c1d4e5f607", "order-api", root, null,
+            DateTimeOffset.UtcNow.AddDays(-2), DateTimeOffset.UtcNow.AddDays(-2)));
+        Store.Upsert(new Project(
+            "git.example.local/team/order-api", "order-api", root,
+            "git.example.local/team/order-api",
+            DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(-1)));
+        Store.Upsert(Sample());
+
+        var stale = Store.FindStaleByRepositoryRoot(root, "github.com/company/order-api");
+
+        Assert.Equal(2, stale.Count);
+        Assert.Equal("git.example.local/team/order-api", stale[0].ProjectId);
+        Assert.Equal("local:3fa2b8c1d4e5f607", stale[1].ProjectId);
     }
 
     [Fact]

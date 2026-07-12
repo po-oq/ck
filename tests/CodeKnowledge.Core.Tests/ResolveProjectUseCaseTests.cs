@@ -51,6 +51,34 @@ public sealed class ResolveProjectUseCaseTests
     }
 
     [Fact]
+    public void Execute_warns_for_every_stale_project_sharing_the_root() // 要件5.8.2: 複数回のID変遷でも孤立を無言で発生させない
+    {
+        _store.Upsert(new Project(
+            "local:3fa2b8c1d4e5f607", "order-api", @"C:\work\order-api",
+            null, DateTimeOffset.UtcNow.AddDays(-2), DateTimeOffset.UtcNow.AddDays(-2)));
+        _store.Upsert(new Project(
+            "git.example.local/team/order-api", "order-api", @"C:\work\order-api",
+            "git.example.local/team/order-api",
+            DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(-1)));
+        _store.KnowledgeCounts["local:3fa2b8c1d4e5f607"] = 12;
+        _store.KnowledgeCounts["git.example.local/team/order-api"] = 5;
+        _git.Context = RemoteContext();
+
+        var resolution = UseCase.Execute(@"C:\work\order-api");
+
+        Assert.Equal(2, resolution.Warnings.Count);
+        Assert.All(resolution.Warnings, w => Assert.Equal("project_id_changed", w.Code));
+        // 最新更新順（updated_at DESC）で決定的に並ぶ
+        Assert.Equal("git.example.local/team/order-api", resolution.Warnings[0].PreviousProjectId);
+        Assert.Equal(5, resolution.Warnings[0].KnowledgeCount);
+        Assert.Equal("local:3fa2b8c1d4e5f607", resolution.Warnings[1].PreviousProjectId);
+        Assert.Equal(12, resolution.Warnings[1].KnowledgeCount);
+        // 自動移行しない: 旧プロジェクトはすべてそのまま残る
+        Assert.True(_store.Projects.ContainsKey("local:3fa2b8c1d4e5f607"));
+        Assert.True(_store.Projects.ContainsKey("git.example.local/team/order-api"));
+    }
+
+    [Fact]
     public void Execute_updates_repository_root_for_same_project_id() // 要件5.8.3
     {
         _store.Upsert(new Project(

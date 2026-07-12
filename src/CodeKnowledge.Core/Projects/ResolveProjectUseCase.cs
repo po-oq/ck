@@ -23,11 +23,10 @@ public sealed class ResolveProjectUseCase(IGitRepository git, IProjectStore stor
         var identity = ProjectIdResolver.Resolve(context);
 
         var warnings = new List<ProjectWarning>();
-        var byRoot = store.FindByRepositoryRoot(context.RepositoryRoot);
-        if (byRoot is not null && byRoot.ProjectId != identity.ProjectId)
+        foreach (var stale in store.FindStaleByRepositoryRoot(context.RepositoryRoot, identity.ProjectId))
         {
             warnings.Add(new ProjectWarning(
-                "project_id_changed", byRoot.ProjectId, store.CountKnowledge(byRoot.ProjectId)));
+                "project_id_changed", stale.ProjectId, store.CountKnowledge(stale.ProjectId)));
         }
 
         var now = DateTimeOffset.UtcNow;
