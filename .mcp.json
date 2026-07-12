@@ -1,5 +1,11 @@
 {
   "mcpServers": {
+    "code-knowledge": {
+      "type": "stdio",
+      "command": "C:\\zDev\\repo\\ck\\artifacts\\mcp\\win-x64\\CodeKnowledge.Mcp.exe",
+      "args": [],
+      "env": {}
+    },
     "code-knowledge-phase0": {
       "type": "stdio",
       "command": "C:\\zDev\\repo\\ck\\artifacts\\phase0\\win-x64\\CodeKnowledge.Phase0.exe",

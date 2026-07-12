@@ -183,7 +183,7 @@ Phase 1で有効なルールは1、2、8、9、13である。
 
 ## 検証記録
 
-`未実施`は検証前の明示的な状態であり、成功を意味しない。Task 15の最終検証後、実測値へ更新する。
+2026-07-13に自動テスト、最終publish、Claude Codeからの実機検証を実施した。CursorとGitHub Copilot in VS Codeの実機検証は、2026-07-11のユーザー判断により対象外としている。
 
 ### 実行環境
 
@@ -204,7 +204,7 @@ Phase 1で有効なルールは1、2、8、9、13である。
 |---|---|---|
 | Release全テスト | 成功 | 不合格0、合格128、スキップ0（Core 81 / Infrastructure 39 / Mcp 8） |
 | 発行済みEXEのMCP E2E | 成功 | Mcp 8件のうち発行済みEXEを使うE2E 5件が成功 |
-| `win-x64`最終publish | 未実施 | Task 15 Step 1で実施 |
+| `win-x64`最終publish | 成功 | 終了コード0。worktreeの発行EXEと実機検証に使用したEXEのSHA-256が一致 |
 
 ### MCPクライアント実機検証
 
@@ -212,17 +212,25 @@ Phase 1で有効なルールは1、2、8、9、13である。
 |---|---|---|---|---|---|---|---|
 | Cursor | 対象外 | 2026-07-11 | 対象外 | 対象外 | 対象外 | 対象外 | 実施環境がないため、ユーザー判断により検証対象外。設定手順のみ整備 |
 | GitHub Copilot in VS Code | 対象外 | 2026-07-11 | 対象外 | 対象外 | 対象外 | 対象外 | 実施環境がないため、ユーザー判断により検証対象外。設定手順のみ整備 |
-| Claude Code | 未実施 | 未実施 | 未実施 | 未実施 | 未実施 | 未実施 | Task 15 Step 2でユーザーが新しいセッションから実機検証する |
+| Claude Code | 2.1.162 | 2026-07-13 | 成功 | 成功 | 成功 | 成功 | `projectId = github.com/po-oq/ck`、警告・エラーなし。保存した`knowledgeId = 019f58551e3c757eaa4863a7c0e864fc`がFTS検索で一致し、facts 7件・evidence 4件を取得 |
 
 ### 発行成果物
 
-Task 15 Step 1の最終publish後、次のコマンドによる実測結果を記録する。
+次のコマンドによる最終publish直後の実測結果:
 
 ```powershell
 Get-ChildItem -File artifacts/mcp/win-x64 | Select-Object Name,Length
 ```
 
-現時点の状態: **未実施**
+| ファイル名 | サイズ (bytes) | 配布要否 |
+|---|---:|---|
+| `CodeKnowledge.Mcp.exe` | 4,838,487 | 必須 |
+| `e_sqlite3.dll` | 1,911,296 | 必須 |
+| `CodeKnowledge.Core.pdb` | 30,008 | 任意（デバッグ用） |
+| `CodeKnowledge.Infrastructure.pdb` | 17,936 | 任意（デバッグ用） |
+| `CodeKnowledge.Mcp.pdb` | 15,980 | 任意（デバッグ用） |
+
+実機検証には`C:\zDev\repo\ck\artifacts\mcp\win-x64\CodeKnowledge.Mcp.exe`を使用した。このEXEのSHA-256はworktreeで最終publishしたEXEと一致している。既定DBパスとして同じディレクトリへ`knowledge.db`、`knowledge.db-wal`、`knowledge.db-shm`が生成されることを確認した。DBファイルは実行時データであり、発行成果物には含めない。
 
 ## 要件定義書からの変更点（Deviations）
 
@@ -237,8 +245,8 @@ Get-ChildItem -File artifacts/mcp/win-x64 | Select-Object Name,Length
 
 - [x] Release構成の全自動テスト成功
 - [x] 発行済み`CodeKnowledge.Mcp.exe`のE2Eテスト成功
-- [ ] `win-x64`最終publish成功と発行成果物一覧の記録
-- [ ] Claude Codeから4 Toolを実機で呼び出し、「保存 → 検索 → 取得」が実リポジトリで成功
+- [x] `win-x64`最終publish成功と発行成果物一覧の記録
+- [x] Claude Codeから4 Toolを実機で呼び出し、「保存 → 検索 → 取得」が実リポジトリで成功
 - [x] Cursor / GitHub Copilot in VS Codeの実機検証免除をDeviationsへ記録
 - [x] Agent行動ルールと3クライアントの設定手順を記録
 - [ ] ユーザーがPhase 1完了を承認
