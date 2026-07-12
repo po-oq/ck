@@ -1,4 +1,5 @@
 using CodeKnowledge.Core.Domain;
+using CodeKnowledge.Core.Search;
 using CodeKnowledge.Infrastructure.Stores;
 
 namespace CodeKnowledge.Infrastructure.Tests;
@@ -49,6 +50,44 @@ public sealed class SqliteKnowledgeStoreSearchTests : IDisposable
         Store.SaveVersion(SqliteKnowledgeStoreSaveTests.Sample(summary: "新しい概要"));
 
         Assert.Empty(Store.SearchFts("github.com/company/order-api", "\"XYZQW\"", 10));
+    }
+
+    [Fact]
+    public void SearchFts_finds_full_width_text_with_half_width_keyword() // 要件8.4
+    {
+        // 保存時の原文は全角。検索キーワードは半角（KeywordPreparationでNFKC正規化済み）。
+        Store.SaveVersion(SqliteKnowledgeStoreSaveTests.Sample(title: "ｍｅｍｏｒｙ leak note"));
+
+        var prepared = KeywordPreparation.Prepare(["memory"]);
+        var hits = Store.SearchFts(
+            "github.com/company/order-api", prepared.FtsMatchExpression!, 10);
+
+        Assert.Single(hits);
+    }
+
+    [Fact]
+    public void SearchLike_finds_full_width_text_with_half_width_keyword() // 要件8.4
+    {
+        Store.SaveVersion(SqliteKnowledgeStoreSaveTests.Sample(summary: "ＤＢ接続の注意点"));
+
+        var prepared = KeywordPreparation.Prepare(["db"]);
+        var hits = Store.SearchLike(
+            "github.com/company/order-api",
+            prepared.LikeKeywords.Select(KeywordPreparation.EscapeLikePattern).ToList());
+
+        Assert.Single(hits);
+    }
+
+    [Fact]
+    public void SearchLike_scopes_to_project() // AC-01
+    {
+        Store.SaveVersion(SqliteKnowledgeStoreSaveTests.Sample(title: "注文完了メール仕様"));
+        Store.SaveVersion(SqliteKnowledgeStoreSaveTests.Sample(
+            projectId: "github.com/other/repo", title: "注文完了メール仕様"));
+
+        var hits = Store.SearchLike("github.com/company/order-api", ["%仕様%"]);
+
+        Assert.Single(hits);
     }
 
     [Fact]

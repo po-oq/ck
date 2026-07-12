@@ -1,3 +1,4 @@
+using System.Text;
 using CodeKnowledge.Core.Domain;
 using CodeKnowledge.Core.Knowledge;
 using CodeKnowledge.Core.Projects;
@@ -16,6 +17,9 @@ public sealed record SearchKnowledgeResult(
 public sealed class SearchKnowledgeUseCase(
     ResolveProjectUseCase resolveProject, IKnowledgeStore store)
 {
+    // FTS候補の取得上限。既知の制限: FTSヒットが200件を超えた場合、上位200件から
+    // 漏れたナレッジはLIKEにもヒットしていてもmatchedRoute="like"に格下げされる
+    // （Phase 1の想定規模では許容する）。
     private const int CandidateFetchLimit = 200;
 
     public SearchKnowledgeResult Execute(
@@ -73,7 +77,12 @@ public sealed class SearchKnowledgeUseCase(
 
     private static IReadOnlyList<string> MatchedKeywords(
         string searchText, IReadOnlyList<string> keywords)
-        => keywords
-            .Where(keyword => searchText.Contains(keyword, StringComparison.OrdinalIgnoreCase))
+    {
+        // 要件8.4: キーワード側はKeywordPreparationでNFKC正規化済みのため、
+        // search_text側もNFKCで揃えて全角半角の表記揺れを吸収する
+        var normalized = searchText.Normalize(NormalizationForm.FormKC);
+        return keywords
+            .Where(keyword => normalized.Contains(keyword, StringComparison.OrdinalIgnoreCase))
             .ToList();
+    }
 }

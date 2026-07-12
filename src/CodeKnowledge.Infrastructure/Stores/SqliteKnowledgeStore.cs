@@ -1,3 +1,4 @@
+using System.Text;
 using CodeKnowledge.Core.Domain;
 using CodeKnowledge.Core.Knowledge;
 using CodeKnowledge.Infrastructure.Database;
@@ -112,17 +113,17 @@ public sealed class SqliteKnowledgeStore(SqliteConnectionFactory factory) : IKno
             VALUES (@title, @question, @summary, @facts, @inferences, @tags,
                     @symbolNames, @symbolIds, @filePaths, @key, @knowledge, @project);
             """,
-            ("@title", version.Title), ("@question", version.OriginalQuestion),
-            ("@summary", version.Summary),
-            ("@facts", string.Join('\n', version.Facts.Select(fact => fact.Text))),
-            ("@inferences", string.Join('\n',
-                version.Inferences.Select(inference => $"{inference.Text}\n{inference.Reason}"))),
-            ("@tags", version.Tags),
-            ("@symbolNames", string.Join('\n', version.Evidence.Select(e => e.SymbolName))),
-            ("@symbolIds", string.Join('\n',
-                version.Evidence.Where(e => e.SymbolId is not null).Select(e => e.SymbolId!))),
-            ("@filePaths", string.Join('\n', version.Evidence.Select(e => e.FilePath).Distinct())),
-            ("@key", version.CanonicalKey), ("@knowledge", knowledgeId!),
+            ("@title", Nfkc(version.Title)), ("@question", Nfkc(version.OriginalQuestion)),
+            ("@summary", Nfkc(version.Summary)),
+            ("@facts", Nfkc(string.Join('\n', version.Facts.Select(fact => fact.Text)))),
+            ("@inferences", Nfkc(string.Join('\n',
+                version.Inferences.Select(inference => $"{inference.Text}\n{inference.Reason}")))),
+            ("@tags", Nfkc(version.Tags)),
+            ("@symbolNames", Nfkc(string.Join('\n', version.Evidence.Select(e => e.SymbolName)))),
+            ("@symbolIds", Nfkc(string.Join('\n',
+                version.Evidence.Where(e => e.SymbolId is not null).Select(e => e.SymbolId!)))),
+            ("@filePaths", Nfkc(string.Join('\n', version.Evidence.Select(e => e.FilePath).Distinct()))),
+            ("@key", Nfkc(version.CanonicalKey)), ("@knowledge", knowledgeId!),
             ("@project", version.ProjectId));
 
         transaction.Commit();
@@ -185,24 +186,23 @@ public sealed class SqliteKnowledgeStore(SqliteConnectionFactory factory) : IKno
             return [];
         using var connection = factory.Open();
         using var command = connection.CreateCommand();
-        // 要件8.3: LIKEルートは実テーブルを走査し、ファイルパスは対象外とする
+        // 要件8.3: LIKEルートはファイルパス（file_paths列）を対象外とする
+        // 要件8.4: NFKC正規化済みのknowledge_ftsを走査し、全角半角の表記揺れを吸収する
+        //          （FTSルートと同じ正規化済みコーパスを読む）
         var conditions = string.Join(" OR ", likePatterns.Select(
             (_, index) => $"search_text LIKE @like{index} ESCAPE '\\'"));
         command.CommandText = $"""
             SELECT * FROM (
                 SELECT k.id, k.canonical_key, k.title, v.summary, v.commit_hash, v.confidence, k.updated_at,
-                       k.title || char(10) || v.original_question || char(10) || v.summary || char(10) ||
-                       v.tags || char(10) || k.canonical_key || char(10) ||
-                       IFNULL((SELECT group_concat(f.text, char(10)) FROM facts f
-                               WHERE f.knowledge_version_id = v.id), '') || char(10) ||
-                       IFNULL((SELECT group_concat(i.text || char(10) || i.reason, char(10)) FROM inferences i
-                               WHERE i.knowledge_version_id = v.id), '') || char(10) ||
-                       IFNULL((SELECT group_concat(e.symbol_name || char(10) || IFNULL(e.symbol_id, ''), char(10))
-                               FROM evidence e WHERE e.knowledge_version_id = v.id), '')
-                       AS search_text
-                FROM knowledge k
+                       knowledge_fts.title || char(10) || knowledge_fts.original_question || char(10) ||
+                       knowledge_fts.summary || char(10) || knowledge_fts.facts || char(10) ||
+                       knowledge_fts.inferences || char(10) || knowledge_fts.tags || char(10) ||
+                       knowledge_fts.symbol_names || char(10) || knowledge_fts.symbol_ids || char(10) ||
+                       knowledge_fts.canonical_key AS search_text
+                FROM knowledge_fts
+                JOIN knowledge k ON k.id = knowledge_fts.knowledge_id
                 JOIN knowledge_versions v ON v.id = k.current_version_id
-                WHERE k.project_id = @project
+                WHERE knowledge_fts.project_id = @project
             )
             WHERE {conditions};
             """;
@@ -215,6 +215,10 @@ public sealed class SqliteKnowledgeStore(SqliteConnectionFactory factory) : IKno
             hits.Add(new LikeSearchHit(ReadSummary(reader), reader.GetString(7)));
         return hits;
     }
+
+    // 要件8.4: 検索インデックス（knowledge_fts）はNFKC正規化して全角半角の表記揺れを吸収する。
+    // ソーステーブル（knowledge / knowledge_versions等）は原文のまま保持する。
+    private static string Nfkc(string content) => content.Normalize(NormalizationForm.FormKC);
 
     internal static KnowledgeSummary ReadSummary(SqliteDataReader reader)
     {

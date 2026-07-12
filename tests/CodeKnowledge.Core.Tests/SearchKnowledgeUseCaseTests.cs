@@ -106,6 +106,16 @@ public sealed class SearchKnowledgeUseCaseTests
     }
 
     [Fact]
+    public void Execute_matches_keywords_against_full_width_search_text() // 要件8.4
+    {
+        _store.FtsHits.Add(new FtsSearchHit(Summary("hit"), Score: -1.0, "ｍｅｍｏｒｙ leak note"));
+
+        var result = UseCase.Execute(@"C:\work\order-api", ["memory"], limit: 10);
+
+        Assert.Equal(["memory"], result.Results[0].MatchedKeywords);
+    }
+
+    [Fact]
     public void Execute_clamps_limit_and_allows_empty_results()
     {
         var result = UseCase.Execute(@"C:\work\order-api", ["メール"], limit: 999);
