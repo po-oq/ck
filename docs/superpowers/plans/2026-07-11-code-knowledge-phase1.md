@@ -4112,7 +4112,7 @@ git commit -m "docs: add readme with client setup, db rules, and agent rules"
 - Modify: `.mcp.json`（`code-knowledge`サーバーの追加）
 - Modify: `docs/code-knowledge-tool-requirements-v2.md`（14章 Phase 1チェックリスト。ユーザー承認後）
 
-- [ ] **Step 1: 全自動テストと発行を最終実行する**
+- [x] **Step 1: 全自動テストと発行を最終実行する**
 
 Run:
 
