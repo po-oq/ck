@@ -47,4 +47,12 @@ public sealed class ContentHasherTests
         var hash = ContentHasher.ComputeSymbolHash(content, 1, 999);
         Assert.Equal(ContentHasher.ComputeSymbolHash(content, 1, 2), hash);
     }
+
+    [Theory]
+    [InlineData("", 0)]
+    [InlineData("one", 1)]
+    [InlineData("one\n", 1)]
+    [InlineData("one\r\ntwo\r\n", 2)]
+    public void CountLines_matches_symbol_hash_semantics(string content, int expected)
+        => Assert.Equal(expected, ContentHasher.CountLines(content));
 }

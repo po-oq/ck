@@ -17,21 +17,32 @@ public static partial class ContentHasher
     /// startLine〜endLine（1始まり・両端含む）のテキストをハッシュする。
     /// </summary>
     public static string ComputeSymbolHash(string fileContent, int startLine, int endLine)
-    {
-        var lines = fileContent.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
-        // Don't count trailing empty element from terminal newline
-        var lineCount = lines.Length;
-        if (lineCount > 0 && lines[lineCount - 1] == "")
-            lineCount--;
+        => ComputeSymbolHash(NormalizeSymbolLines(fileContent), startLine, endLine);
 
+    public static int CountLines(string content) => SplitLines(content).Length;
+
+    internal static string[] NormalizeSymbolLines(string content)
+    {
+        var lines = SplitLines(content);
+        for (var index = 0; index < lines.Length; index++)
+            lines[index] = ConsecutiveSpaces().Replace(lines[index], " ").TrimEnd();
+        return lines;
+    }
+
+    internal static string ComputeSymbolHash(
+        IReadOnlyList<string> normalizedLines, int startLine, int endLine)
+    {
         var from = Math.Max(1, startLine);
-        var to = Math.Min(lineCount, endLine);
+        var to = Math.Min(normalizedLines.Count, endLine);
         var normalized = new StringBuilder();
         for (var lineNumber = from; lineNumber <= to; lineNumber++)
-        {
-            var line = ConsecutiveSpaces().Replace(lines[lineNumber - 1], " ").TrimEnd();
-            normalized.Append(line).Append('\n');
-        }
+            normalized.Append(normalizedLines[lineNumber - 1]).Append('\n');
         return ComputeFileHash(normalized.ToString());
+    }
+
+    private static string[] SplitLines(string content)
+    {
+        var lines = content.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
+        return lines.Length > 0 && lines[^1] == "" ? lines[..^1] : lines;
     }
 }
