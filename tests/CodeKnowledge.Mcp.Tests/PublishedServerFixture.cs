@@ -25,6 +25,7 @@ public sealed class PublishedServerFixture : IDisposable
             "publish", "src/CodeKnowledge.Mcp/CodeKnowledge.Mcp.csproj",
             "--configuration", "Release", "--runtime", target.RuntimeIdentifier,
             "--self-contained", "false", "--output", PublishDirectory,
+            "--disable-build-servers",
         })
             startInfo.ArgumentList.Add(argument);
         using var process = Process.Start(startInfo)!;
