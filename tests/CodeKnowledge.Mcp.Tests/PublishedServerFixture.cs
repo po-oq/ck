@@ -11,6 +11,7 @@ public sealed class PublishedServerFixture : IDisposable
     public PublishedServerFixture()
     {
         var repoRoot = FindRepoRoot();
+        var target = PublishedServerTargetResolver.ResolveCurrent();
         PublishDirectory = Path.Combine(
             Path.GetTempPath(), $"ck-publish-{Guid.NewGuid():N}");
         var startInfo = new ProcessStartInfo("dotnet")
@@ -22,7 +23,7 @@ public sealed class PublishedServerFixture : IDisposable
         foreach (var argument in new[]
         {
             "publish", "src/CodeKnowledge.Mcp/CodeKnowledge.Mcp.csproj",
-            "--configuration", "Release", "--runtime", "win-x64",
+            "--configuration", "Release", "--runtime", target.RuntimeIdentifier,
             "--self-contained", "false", "--output", PublishDirectory,
         })
             startInfo.ArgumentList.Add(argument);
@@ -38,7 +39,9 @@ public sealed class PublishedServerFixture : IDisposable
         process.WaitForExit();
         if (process.ExitCode != 0)
             throw new InvalidOperationException($"publish failed: {stdout}\n{stderr}");
-        ExePath = Path.Combine(PublishDirectory, "CodeKnowledge.Mcp.exe");
+        ExePath = Path.Combine(PublishDirectory, target.ExecutableName);
+        if (!File.Exists(ExePath))
+            throw new FileNotFoundException("Published server executable not found.", ExePath);
     }
 
     private static string FindRepoRoot()
