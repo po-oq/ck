@@ -1,0 +1,144 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  validate-tag:
+    name: Validate release tag
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate semantic version tag
+        shell: bash
+        run: |
+          if [[ ! "$GITHUB_REF_NAME" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-((0|[1-9][0-9]*)|([0-9]*[A-Za-z-][0-9A-Za-z-]*))(\.((0|[1-9][0-9]*)|([0-9]*[A-Za-z-][0-9A-Za-z-]*)))*)?$ ]]; then
+            echo "Invalid release tag: $GITHUB_REF_NAME" >&2
+            exit 1
+          fi
+
+  build-windows:
+    name: Build release (win-x64)
+    needs: validate-tag
+    runs-on: windows-2025
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.201
+
+      - name: Restore
+        run: dotnet restore CodeKnowledge.slnx --runtime win-x64
+
+      - name: Test
+        run: dotnet test CodeKnowledge.slnx --configuration Release --no-restore
+
+      - name: Publish MCP server
+        run: dotnet publish src/CodeKnowledge.Mcp/CodeKnowledge.Mcp.csproj --configuration Release --runtime win-x64 --self-contained false --no-restore --output artifacts/mcp/win-x64
+
+      - name: Package Windows release
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path release | Out-Null
+          Compress-Archive -Path "artifacts/mcp/win-x64/*" -DestinationPath "release/CodeKnowledge-$env:GITHUB_REF_NAME-win-x64.zip"
+
+      - name: Upload Windows release
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-win-x64
+          path: release/CodeKnowledge-${{ github.ref_name }}-win-x64.zip
+          if-no-files-found: error
+          overwrite: false
+
+  build-macos:
+    name: Build release (osx-arm64)
+    needs: validate-tag
+    runs-on: macos-15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.201
+
+      - name: Restore
+        run: dotnet restore CodeKnowledge.slnx --runtime osx-arm64
+
+      - name: Test
+        run: dotnet test CodeKnowledge.slnx --configuration Release --no-restore
+
+      - name: Publish MCP server
+        run: dotnet publish src/CodeKnowledge.Mcp/CodeKnowledge.Mcp.csproj --configuration Release --runtime osx-arm64 --self-contained false --no-restore --output artifacts/mcp/osx-arm64
+
+      - name: Package Mac release
+        shell: bash
+        run: |
+          chmod +x artifacts/mcp/osx-arm64/CodeKnowledge.Mcp
+          mkdir -p release
+          tar -C artifacts/mcp/osx-arm64 -czf \
+            "release/CodeKnowledge-$GITHUB_REF_NAME-osx-arm64.tar.gz" .
+          verify="$(mktemp -d)"
+          tar -C "$verify" -xzf "release/CodeKnowledge-$GITHUB_REF_NAME-osx-arm64.tar.gz"
+          test -x "$verify/CodeKnowledge.Mcp"
+
+      - name: Upload Mac release
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-osx-arm64
+          path: release/CodeKnowledge-${{ github.ref_name }}-osx-arm64.tar.gz
+          if-no-files-found: error
+          overwrite: false
+
+  create-release:
+    name: Create GitHub Release
+    needs:
+      - build-windows
+      - build-macos
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Download release archives
+        uses: actions/download-artifact@v8
+        with:
+          pattern: release-*
+          merge-multiple: true
+          path: release
+
+      - name: Generate and verify checksums
+        shell: bash
+        run: |
+          cd release
+          sha256sum \
+            "CodeKnowledge-$GITHUB_REF_NAME-win-x64.zip" \
+            "CodeKnowledge-$GITHUB_REF_NAME-osx-arm64.tar.gz" \
+            > SHA256SUMS
+          sha256sum --check SHA256SUMS
+
+      - name: Refuse to overwrite an existing release
+        shell: bash
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "Release already exists: $GITHUB_REF_NAME" >&2
+            exit 1
+          fi
+
+      - name: Create GitHub Release
+        shell: bash
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            release/CodeKnowledge-$GITHUB_REF_NAME-win-x64.zip \
+            release/CodeKnowledge-$GITHUB_REF_NAME-osx-arm64.tar.gz \
+            release/SHA256SUMS --verify-tag --generate-notes \
+            --title "CodeKnowledge $GITHUB_REF_NAME"
