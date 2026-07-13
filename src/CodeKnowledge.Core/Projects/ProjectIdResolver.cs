@@ -33,10 +33,7 @@ public static class ProjectIdResolver
         if (normalizedRemote is not null)
             return new ProjectIdentity(normalizedRemote, "remote", normalizedRemote, displayName);
 
-        // 末尾区切りの有無でハッシュが変わらないよう、表示名と同じTrimEndを適用する（AC-17）
-        var normalizedRoot = context.RepositoryRoot
-            .TrimEnd(Path.DirectorySeparatorChar, '/')
-            .Replace('\\', '/').ToLowerInvariant();
+        var normalizedRoot = ProjectPathNormalizer.NormalizeForLocalId(context.RepositoryRoot);
         var hash = Convert.ToHexStringLower(
             SHA256.HashData(Encoding.UTF8.GetBytes(normalizedRoot)))[..16];
         return new ProjectIdentity($"local:{hash}", "local", null, displayName);
@@ -73,7 +70,6 @@ public static class ProjectIdResolver
             return context.ConfigProjectName;
         if (normalizedRemote is not null)
             return normalizedRemote[(normalizedRemote.LastIndexOf('/') + 1)..];
-        return Path.GetFileName(
-            context.RepositoryRoot.TrimEnd(Path.DirectorySeparatorChar, '/'));
+        return ProjectPathNormalizer.GetDisplayName(context.RepositoryRoot);
     }
 }

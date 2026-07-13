@@ -104,6 +104,29 @@ public sealed class ProjectIdResolverTests
     }
 
     [Fact]
+    public void Local_fallback_ignores_unix_trailing_separator()
+    {
+        var first = ProjectIdResolver.Resolve(Context(root: "/work/my-tool"));
+        var second = ProjectIdResolver.Resolve(Context(root: "/work/my-tool/"));
+        Assert.Equal(first.ProjectId, second.ProjectId);
+    }
+
+    [Fact]
+    public void Local_fallback_preserves_unix_case()
+    {
+        var first = ProjectIdResolver.Resolve(Context(root: "/Work/My-Tool"));
+        var second = ProjectIdResolver.Resolve(Context(root: "/work/my-tool"));
+        Assert.NotEqual(first.ProjectId, second.ProjectId);
+    }
+
+    [Fact]
+    public void Display_name_handles_windows_path_on_every_host()
+    {
+        var identity = ProjectIdResolver.Resolve(Context(root: @"C:\work\my-tool"));
+        Assert.Equal("my-tool", identity.DisplayName);
+    }
+
+    [Fact]
     public void Display_name_prefers_config_then_remote_then_directory()
     {
         Assert.Equal("Order API", ProjectIdResolver.Resolve(Context(
