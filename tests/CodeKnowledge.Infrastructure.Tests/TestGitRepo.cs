@@ -28,9 +28,14 @@ public sealed class TestGitRepo : IDisposable
 
     public string Run(params string[] arguments)
     {
+        return RunAt(Root, arguments);
+    }
+
+    public string RunAt(string workingDirectory, params string[] arguments)
+    {
         var startInfo = new ProcessStartInfo("git")
         {
-            WorkingDirectory = Root,
+            WorkingDirectory = workingDirectory,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
         };
