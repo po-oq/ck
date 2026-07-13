@@ -16,7 +16,7 @@ jobs:
       - name: Validate semantic version tag
         shell: bash
         run: |
-          if [[ ! "$GITHUB_REF_NAME" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-((0|[1-9][0-9]*)|([0-9]*[A-Za-z-][0-9A-Za-z-]*))(\.((0|[1-9][0-9]*)|([0-9]*[A-Za-z-][0-9A-Za-z-]*)))*)?$ ]]; then
+          if [[ ! "$GITHUB_REF_NAME" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-((0|[1-9][0-9]*)|([0-9]*[A-Za-z-][0-9A-Za-z-]*))(\.((0|[1-9][0-9]*)|([0-9]*[A-Za-z-][0-9A-Za-z-]*)))*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
             echo "Invalid release tag: $GITHUB_REF_NAME" >&2
             exit 1
           fi
@@ -138,8 +138,10 @@ jobs:
       - name: Create GitHub Release
         shell: bash
         run: |
+          notes="WARNING: CodeKnowledge-$GITHUB_REF_NAME-osx-arm64.tar.gz is unsigned and unnotarized. macOS Gatekeeper may require the README's trusted-release instructions."
           gh release create "$GITHUB_REF_NAME" \
             release/CodeKnowledge-$GITHUB_REF_NAME-win-x64.zip \
             release/CodeKnowledge-$GITHUB_REF_NAME-osx-arm64.tar.gz \
             release/SHA256SUMS --verify-tag --generate-notes \
+            --notes "$notes" \
             --title "CodeKnowledge $GITHUB_REF_NAME"

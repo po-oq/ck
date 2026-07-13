@@ -223,11 +223,12 @@ Macでは次のように絶対パスを指定する。
 claude mcp add --transport stdio --scope project code-knowledge -- "C:\Tools\CodeKnowledge\CodeKnowledge.Mcp.exe"
 ```
 
-MacでDBパスを上書きして登録する場合は、登録コマンドを実行するシェルで次のように指定する。
+MacでDBパスを上書きして登録する場合は、`--env`でプロジェクト設定へ保存する。現在のシェルだけに設定する`export`は不要であり、登録後に開始したClaude CodeセッションでもこのDBパスが使用される。
 
 ```bash
-export CODEKNOWLEDGE_DB_PATH="$HOME/Tools/CodeKnowledge/data/knowledge.db"
-claude mcp add --transport stdio --scope project code-knowledge -- \
+claude mcp add --transport stdio --scope project \
+  --env "CODEKNOWLEDGE_DB_PATH=$HOME/Tools/CodeKnowledge/data/knowledge.db" \
+  code-knowledge -- \
   "$HOME/Tools/CodeKnowledge/CodeKnowledge.Mcp"
 ```
 
