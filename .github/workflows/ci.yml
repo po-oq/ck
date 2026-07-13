@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test and publish (${{ matrix.rid }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2025
+            rid: win-x64
+            executable: CodeKnowledge.Mcp.exe
+          - os: macos-15
+            rid: osx-arm64
+            executable: CodeKnowledge.Mcp
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.201
+
+      - name: Restore
+        run: dotnet restore CodeKnowledge.slnx --runtime ${{ matrix.rid }}
+
+      - name: Test
+        run: dotnet test CodeKnowledge.slnx --configuration Release --no-restore
+
+      - name: Publish MCP server
+        run: dotnet publish src/CodeKnowledge.Mcp/CodeKnowledge.Mcp.csproj --configuration Release --runtime ${{ matrix.rid }} --self-contained false --no-restore --output artifacts/mcp/${{ matrix.rid }}
+
+      - name: Verify publish output
+        shell: pwsh
+        run: |
+          $outputDirectory = "artifacts/mcp/${{ matrix.rid }}"
+          $entryPoint = Join-Path $outputDirectory "${{ matrix.executable }}"
+
+          if (-not (Test-Path -LiteralPath $entryPoint -PathType Leaf)) {
+            throw "Missing entry point: $entryPoint"
+          }
+
+          $nativeSqlite = Get-ChildItem -LiteralPath $outputDirectory -Recurse -File |
+            Where-Object { $_.Name -match 'e_sqlite3' } |
+            Select-Object -First 1
+
+          if (-not $nativeSqlite) {
+            throw "Missing native SQLite library matching e_sqlite3 in $outputDirectory"
+          }
