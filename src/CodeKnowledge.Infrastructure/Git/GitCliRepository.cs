@@ -80,6 +80,45 @@ public sealed class GitCliRepository : IGitRepository
         return System.Text.Encoding.UTF8.GetString(result.StandardOutput);
     }
 
+    public string? ResolveCommit(string root, string commitish)
+    {
+        var result = GitCommandRunner.Run(
+            root, "rev-parse", "--verify", "--end-of-options", $"{commitish}^{{commit}}");
+        return result.ExitCode == 0 ? result.StandardOutput.Trim() : null;
+    }
+
+    public GitCommitDiff? CompareCommits(string root, string baseCommit, string targetCommit)
+    {
+        var names = GitCommandRunner.RunBytes(root, "diff", "--find-renames",
+            "--name-status", "-z", baseCommit, targetCommit, "--");
+        var patch = GitCommandRunner.Run(root, "diff", "--find-renames",
+            "--unified=0", "--no-color", "--no-ext-diff", baseCommit, targetCommit, "--");
+        return names.ExitCode == 0 && patch.ExitCode == 0
+            ? new GitCommitDiff(GitDiffParser.ParseChanges(names.StandardOutput, patch.StandardOutput))
+            : null;
+    }
+
+    public GitFileSnapshot TryReadFileAtCommit(string root, string commit, string path)
+    {
+        var tree = GitCommandRunner.RunBytes(
+            root, "ls-tree", "-z", "--full-tree", commit, "--", $":(literal){path}");
+        if (tree.ExitCode != 0) return GitFileSnapshot.Unavailable();
+        if (tree.StandardOutput.Length == 0) return GitFileSnapshot.Missing();
+        var result = GitCommandRunner.RunBytes(root, "show", $"{commit}:{path}");
+        return result.ExitCode == 0
+            ? GitFileSnapshot.Available(System.Text.Encoding.UTF8.GetString(result.StandardOutput))
+            : GitFileSnapshot.Unavailable();
+    }
+
+    public IReadOnlySet<string>? GetWorkingTreeChangedPaths(string root)
+    {
+        var result = GitCommandRunner.RunBytes(
+            root, "status", "--porcelain=v1", "-z", "--untracked-files=all");
+        return result.ExitCode == 0
+            ? GitDiffParser.ParseWorkingTreePaths(result.StandardOutput)
+            : null;
+    }
+
     private static string? ReadConfig(string repositoryRoot, string key)
     {
         var result = GitCommandRunner.Run(repositoryRoot, "config", "--get", key);

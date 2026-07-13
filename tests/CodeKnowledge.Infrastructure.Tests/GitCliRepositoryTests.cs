@@ -1,4 +1,5 @@
 using CodeKnowledge.Core.Errors;
+using CodeKnowledge.Core.Git;
 using CodeKnowledge.Infrastructure.Git;
 
 namespace CodeKnowledge.Infrastructure.Tests;
@@ -146,5 +147,143 @@ public sealed class GitCliRepositoryTests
         var exception = Assert.Throws<CodeKnowledgeException>(
             () => _repository.ReadFileAtCommit(repo.Root, commit, "does/not/exist.txt"));
         Assert.Equal(CodeKnowledgeException.InvalidArguments, exception.Code);
+    }
+
+    [Fact]
+    public void ResolveCommit_accepts_HEAD_short_hash_and_tag_and_rejects_unknown()
+    {
+        using var repo = new TestGitRepo();
+        var commit = repo.CommitFile("src/a.txt", "one\n");
+        repo.Run("tag", "saved");
+        Assert.Equal(commit, _repository.ResolveCommit(repo.Root, "HEAD"));
+        Assert.Equal(commit, _repository.ResolveCommit(repo.Root, commit));
+        Assert.Equal(commit, _repository.ResolveCommit(repo.Root, commit[..8]));
+        Assert.Equal(commit, _repository.ResolveCommit(repo.Root, "saved"));
+        Assert.Null(_repository.ResolveCommit(repo.Root, "does-not-exist"));
+        Assert.Null(_repository.ResolveCommit(repo.Root, "HEAD;touch injected"));
+        Assert.False(File.Exists(Path.Combine(repo.Root, "injected")));
+    }
+
+    [Fact]
+    public void CompareCommits_returns_rename_and_line_mapping()
+    {
+        using var repo = new TestGitRepo();
+        var before = repo.CommitFile("src/Old Name.cs", "one\ntwo\nthree\n");
+        repo.Run("mv", "src/Old Name.cs", "src/新 Name.cs");
+        File.WriteAllText(Path.Combine(repo.Root, "src", "新 Name.cs"),
+            "zero\none\nTWO\nthree\n");
+        repo.Run("add", "-A");
+        repo.Run("commit", "-m", "rename and change");
+        var after = repo.Run("rev-parse", "HEAD").Trim();
+
+        var diff = _repository.CompareCommits(repo.Root, before, after);
+
+        Assert.NotNull(diff);
+        Assert.Equal("src/新 Name.cs", diff.ResolveTargetPath("src/Old Name.cs"));
+        Assert.Equal(2, diff.MapOldLineToNew("src/Old Name.cs", 1));
+    }
+
+    [Fact]
+    public void CompareCommits_returns_content_preserving_rename()
+    {
+        using var repo = new TestGitRepo();
+        var before = repo.CommitFile("src/old.cs", "same\ncontent\n");
+        repo.Run("mv", "src/old.cs", "src/moved.cs");
+        repo.Run("commit", "-m", "move only");
+        var diff = _repository.CompareCommits(
+            repo.Root, before, repo.Run("rev-parse", "HEAD").Trim());
+        var change = Assert.Single(diff!.Files);
+        Assert.Equal(GitChangeKind.Renamed, change.Kind);
+        Assert.Equal("src/old.cs", change.OldPath);
+        Assert.Equal("src/moved.cs", change.NewPath);
+    }
+
+    [Fact]
+    public void CompareCommits_maps_lines_after_a_deletion()
+    {
+        using var repo = new TestGitRepo();
+        var before = repo.CommitFile("src/a.cs", "one\nremoved\nthree\n");
+        repo.CommitFile("src/a.cs", "one\nthree\n", "delete middle line");
+        var diff = _repository.CompareCommits(
+            repo.Root, before, repo.Run("rev-parse", "HEAD").Trim());
+        Assert.Equal(2, diff!.MapOldLineToNew("src/a.cs", 3));
+    }
+
+    [Fact]
+    public void CompareCommits_maps_deleted_file_to_null()
+    {
+        using var repo = new TestGitRepo();
+        var before = repo.CommitFile("src/deleted.cs", "x\n");
+        File.Delete(Path.Combine(repo.Root, "src", "deleted.cs"));
+        repo.Run("add", "-A");
+        repo.Run("commit", "-m", "delete");
+        var diff = _repository.CompareCommits(
+            repo.Root, before, repo.Run("rev-parse", "HEAD").Trim());
+        Assert.NotNull(diff);
+        Assert.Null(diff.ResolveTargetPath("src/deleted.cs"));
+    }
+
+    [Fact]
+    public void CompareCommits_reports_added_modified_and_deleted_files()
+    {
+        using var repo = new TestGitRepo();
+        repo.CommitFile("modified.cs", "before\n");
+        var before = repo.CommitFile("deleted.cs", "delete\n");
+        File.WriteAllText(Path.Combine(repo.Root, "modified.cs"), "after\n");
+        File.Delete(Path.Combine(repo.Root, "deleted.cs"));
+        File.WriteAllText(Path.Combine(repo.Root, "added.cs"), "add\n");
+        repo.Run("add", "-A");
+        repo.Run("commit", "-m", "all change kinds");
+        var diff = _repository.CompareCommits(
+            repo.Root, before, repo.Run("rev-parse", "HEAD").Trim());
+        Assert.NotNull(diff);
+        Assert.Contains(diff.Files, value => value.Kind == GitChangeKind.Added);
+        Assert.Contains(diff.Files, value => value.Kind == GitChangeKind.Modified);
+        Assert.Contains(diff.Files, value => value.Kind == GitChangeKind.Deleted);
+    }
+
+    [Fact]
+    public void TryReadFileAtCommit_distinguishes_available_and_missing()
+    {
+        using var repo = new TestGitRepo();
+        var commit = repo.CommitFile("src/a.txt", "hello");
+        var present = _repository.TryReadFileAtCommit(repo.Root, commit, "src/a.txt");
+        var missing = _repository.TryReadFileAtCommit(repo.Root, commit, "src/missing.txt");
+        Assert.Equal(GitFileSnapshotStatus.Available, present.Status);
+        Assert.Equal("hello", present.Content);
+        Assert.Equal(GitFileSnapshotStatus.Missing, missing.Status);
+    }
+
+    [Fact]
+    public void TryReadFileAtCommit_treats_pathspec_characters_as_literal()
+    {
+        using var repo = new TestGitRepo();
+        Directory.CreateDirectory(Path.Combine(repo.Root, "src"));
+        File.WriteAllText(Path.Combine(repo.Root, "src", "[literal].txt"), "literal");
+        repo.Run("add", "--", ":(literal)src/[literal].txt");
+        repo.Run("commit", "-m", "literal pathspec name");
+        var commit = repo.Run("rev-parse", "HEAD").Trim();
+        var snapshot = _repository.TryReadFileAtCommit(
+            repo.Root, commit, "src/[literal].txt");
+        Assert.Equal(GitFileSnapshotStatus.Available, snapshot.Status);
+        Assert.Equal("literal", snapshot.Content);
+    }
+
+    [Fact]
+    public void GetWorkingTreeChangedPaths_includes_modified_deleted_and_rename_paths()
+    {
+        using var repo = new TestGitRepo();
+        repo.CommitFile("a.txt", "a");
+        repo.CommitFile("b.txt", "b");
+        repo.CommitFile("c.txt", "c");
+        File.WriteAllText(Path.Combine(repo.Root, "a.txt"), "changed");
+        File.Delete(Path.Combine(repo.Root, "b.txt"));
+        repo.Run("mv", "c.txt", "renamed c.txt");
+        var paths = _repository.GetWorkingTreeChangedPaths(repo.Root);
+        Assert.NotNull(paths);
+        Assert.Contains("a.txt", paths);
+        Assert.Contains("b.txt", paths);
+        Assert.Contains("c.txt", paths);
+        Assert.Contains("renamed c.txt", paths);
     }
 }
