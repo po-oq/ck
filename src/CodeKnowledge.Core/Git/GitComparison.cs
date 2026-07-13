@@ -24,7 +24,11 @@ public sealed record GitFileChange(
         foreach (var hunk in Hunks.OrderBy(value => value.OldStart))
         {
             if (oldLine < hunk.OldStart) break;
-            if (hunk.OldCount == 0) { delta += hunk.NewCount; continue; }
+            if (hunk.OldCount == 0)
+            {
+                if (oldLine > hunk.OldStart) delta += hunk.NewCount;
+                continue;
+            }
             if (oldLine <= hunk.OldStart + hunk.OldCount - 1)
                 return Math.Max(1, hunk.NewStart);
             delta += hunk.NewCount - hunk.OldCount;

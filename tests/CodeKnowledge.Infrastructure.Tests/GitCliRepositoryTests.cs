@@ -210,6 +210,20 @@ public sealed class GitCliRepositoryTests
     }
 
     [Fact]
+    public void CompareCommits_preserves_insertion_boundary_line_mapping()
+    {
+        using var repo = new TestGitRepo();
+        var before = repo.CommitFile("src/a.cs", "one\ntwo\n");
+        var after = repo.CommitFile(
+            "src/a.cs", "one\ninserted\ntwo\n", "insert middle line");
+
+        var diff = _repository.CompareCommits(repo.Root, before, after);
+
+        Assert.Equal(1, diff!.MapOldLineToNew("src/a.cs", 1));
+        Assert.Equal(3, diff.MapOldLineToNew("src/a.cs", 2));
+    }
+
+    [Fact]
     public void CompareCommits_maps_deleted_file_to_null()
     {
         using var repo = new TestGitRepo();
