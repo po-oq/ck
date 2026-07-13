@@ -79,8 +79,8 @@ internal static class ProjectPathNormalizer
 
 - [ ] Run Infrastructure tests; expect the two `/var` versus `/private/var` failures.
 - [ ] Move the existing `ProcessStartInfo` body into `RunAt`, using its `workingDirectory` parameter.
-- [ ] For the main repo expected root use `repo.Run("rev-parse", "--show-toplevel").Trim()`.
-- [ ] For the worktree use `repo.RunAt(worktreePath, "rev-parse", "--show-toplevel").Trim()`.
+- [ ] For the main repo expected root use `Path.GetFullPath(repo.Run("rev-parse", "--show-toplevel").Trim())`.
+- [ ] For the worktree use `Path.GetFullPath(repo.RunAt(worktreePath, "rev-parse", "--show-toplevel").Trim())`.
 - [ ] Run `dotnet test tests/CodeKnowledge.Infrastructure.Tests --configuration Release`; expect PASS.
 - [ ] Commit: `git commit -m "test: compare canonical git roots across platforms"`.
 

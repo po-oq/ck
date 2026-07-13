@@ -12,7 +12,8 @@ public sealed class GitCliRepositoryTests
     {
         using var repo = new TestGitRepo();
         var commit = repo.CommitFile("src/a.txt", "hello");
-        var expectedRoot = repo.Run("rev-parse", "--show-toplevel").Trim();
+        var expectedRoot = Path.GetFullPath(
+            repo.Run("rev-parse", "--show-toplevel").Trim());
 
         var context = _repository.ResolveContext(Path.Combine(repo.Root, "src"));
 
@@ -118,10 +119,11 @@ public sealed class GitCliRepositoryTests
         repo.Run("worktree", "add", worktreePath, "-b", "wt-branch");
         try
         {
-            var expectedRoot = repo.RunAt(
-                worktreePath,
-                "rev-parse",
-                "--show-toplevel").Trim();
+            var expectedRoot = Path.GetFullPath(
+                repo.RunAt(
+                    worktreePath,
+                    "rev-parse",
+                    "--show-toplevel").Trim());
             var context = _repository.ResolveContext(worktreePath);
 
             Assert.Equal(expectedRoot, context.RepositoryRoot);
