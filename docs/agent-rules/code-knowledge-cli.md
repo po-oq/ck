@@ -2,7 +2,11 @@
 
 このリポジトリには、過去のコード調査結果をプロジェクト単位でSQLiteに蓄積する「コード知識ツール」がCLIとして用意されている。同じ箇所を毎回ゼロから調べ直さないために、**既存機能について尋ねられたら、まずこのツールで過去の調査結果を検索してから回答すること**。
 
-以降、実行ファイルの絶対パスを `CK` と表記する。実際の環境の配置に合わせて置き換えること（例: `C:\Tools\CodeKnowledge\CodeKnowledge.Cli.exe`）。
+以降、実行ファイルの絶対パスを `CK` と表記する。実際の環境の配置に合わせて置き換えること。
+- Windows: `C:\Tools\CodeKnowledge\CodeKnowledge.Cli.exe`
+- macOS (Apple Silicon): `$HOME/Tools/CodeKnowledge/CodeKnowledge.Cli`（拡張子なし）
+
+以降のコマンド例はWindows（PowerShell）とmacOS（bash/zsh）のどちらでも、`CK` を各自のパスに置き換えれば動く。標準入力へのJSON渡しはシェルによって書き方が変わるため（PowerShellの `echo '...' |` とbashの `echo '...' |` はクォート解釈が異なる）、**多行や日本語を含む入力は後述の `--input <file>` を使うのが安全**。
 
 ## いつ・どのコマンドを使うか（判断表）
 
@@ -109,10 +113,10 @@ echo '{"knowledgeId":"<id>"}' | CK validate
 - `medium` — 主要な根拠は読んだが周辺は未確認
 - `low` — 命名や慣習からの推測が中心
 
-**手順:** 一時ファイル（例 `C:\Temp\ck-save.json`）にJSONを書いてから渡す。
+**手順:** 一時ファイル（Windowsなら例 `C:\Temp\ck-save.json`、macOSなら例 `/tmp/ck-save.json`）にJSONを書いてから渡す。
 
 ```
-CK save --input C:\Temp\ck-save.json
+CK save --input <一時ファイルのパス>
 ```
 
 最小例（一時ファイルの中身）:

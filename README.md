@@ -93,13 +93,37 @@ C:\Tools\CodeKnowledge\CodeKnowledge.Mcp.exe
 $HOME/Tools/CodeKnowledge/CodeKnowledge.Mcp
 ```
 
-### CLIの発行（Windows 11 x64）
+### CLIの発行（Windows 11 x64 / macOS Apple Silicon）
+
+CLIはMCPと同じCore/Infrastructureを使うクロスプラットフォームな.NETアプリであり、Windowsに加えてApple Silicon Macでも動作する。対象OSのRIDを指定して発行する。
 
 ```bash
+# Windows 11 x64
 dotnet publish src/CodeKnowledge.Cli/CodeKnowledge.Cli.csproj \
   --configuration Release --runtime win-x64 --self-contained false \
   --output artifacts/cli/win-x64
-# → artifacts\cli\win-x64\CodeKnowledge.Cli.exe
+
+# macOS 15以降 Apple Silicon
+dotnet publish src/CodeKnowledge.Cli/CodeKnowledge.Cli.csproj \
+  --configuration Release --runtime osx-arm64 --self-contained false \
+  --output artifacts/cli/osx-arm64
+```
+
+発行後のエントリーポイントは次のファイルである。配布時は、対応する`artifacts/cli/<RID>`ディレクトリの内容一式を使用する。
+
+```text
+artifacts\cli\win-x64\CodeKnowledge.Cli.exe
+artifacts/cli/osx-arm64/CodeKnowledge.Cli
+```
+
+利用者側には対応する.NET 10 Runtime（x64 / Arm64）が必要である。Linux、Intel Mac、Windows Arm64は対象外である。
+
+Mac版は未署名・未公証のため、Gatekeeperにより起動を拒否される場合がある。次の操作は、チェックサムを確認し、自分が信頼した公式GitHub Releaseから取得したファイルに限って実行する。第三者から入手したファイルではquarantineを解除しない。
+
+```bash
+cd "$HOME/Tools/CodeKnowledge"
+chmod +x CodeKnowledge.Cli
+xattr -d com.apple.quarantine CodeKnowledge.Cli
 ```
 
 CLIとMCPで同じナレッジを共有するには、両方に同じ `CODEKNOWLEDGE_DB_PATH` を設定する。
@@ -116,7 +140,7 @@ CLIとMCPで同じナレッジを共有するには、両方に同じ `CODEKNOWL
 | Claude Code | `CLAUDE.md` |
 | GitHub Copilot（VS Code / Visual Studio） | `.github/copilot-instructions.md` |
 
-`CodeKnowledge.Cli.exe` の絶対パスは各環境の配置に合わせて置き換える。
+CLI実行ファイルの絶対パスは各環境の配置に合わせて置き換える（Windowsは`...\CodeKnowledge.Cli.exe`、Macは`.../CodeKnowledge.Cli`）。
 
 ## 配置とデータベース
 
