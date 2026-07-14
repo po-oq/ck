@@ -115,10 +115,13 @@ public sealed class CliEndToEndTests : IClassFixture<PublishedCliFixture>, IDisp
                 Path.Combine(_dbDirectory, "knowledge.db");
             using var process = Process.Start(startInfo)!;
             process.StandardInput.Close();
+            var stdout = process.StandardOutput.ReadToEnd();
             var stderr = process.StandardError.ReadToEnd();
             process.WaitForExit(30_000);
             Assert.Equal(2, process.ExitCode);
             Assert.Contains("git_repository_required: ", stderr);
+            // stdoutはJSON専用の契約: 失敗パスでも何も書き込まれない
+            Assert.True(string.IsNullOrWhiteSpace(stdout));
         }
         finally
         {

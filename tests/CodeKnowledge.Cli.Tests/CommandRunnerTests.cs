@@ -117,6 +117,51 @@ public sealed class CommandRunnerTests : IDisposable
         Assert.Equal("valid", json.GetProperty("status").GetString());
     }
 
+    [Fact]
+    public void Search_with_limit_as_string_throws_invalid_arguments()
+    {
+        var runner = NewRunner();
+        var searchInput = JsonSerializer.Serialize(new { keywords = new[] { "x" }, limit = "10" });
+        var exception = Assert.Throws<Core.Errors.CodeKnowledgeException>(
+            () => runner.Run("search", searchInput, _repo.Root));
+        Assert.Equal(Core.Errors.CodeKnowledgeException.InvalidArguments, exception.Code);
+    }
+
+    [Fact]
+    public void Search_with_non_string_keyword_throws_invalid_arguments()
+    {
+        var runner = NewRunner();
+        var searchInput = JsonSerializer.Serialize(new { keywords = new object[] { "x", 5 } });
+        var exception = Assert.Throws<Core.Errors.CodeKnowledgeException>(
+            () => runner.Run("search", searchInput, _repo.Root));
+        Assert.Equal(Core.Errors.CodeKnowledgeException.InvalidArguments, exception.Code);
+    }
+
+    [Fact]
+    public void Save_with_missing_required_field_throws_invalid_arguments()
+    {
+        var runner = NewRunner();
+        var saveInput = JsonSerializer.Serialize(new
+        {
+            // canonicalKey omitted
+            title = "注文完了メール仕様",
+            originalQuestion = "q",
+            summary = "s",
+            confidence = "high",
+            evidence = new[]
+            {
+                new { filePath = "src/OrderService.cs", symbolName = "OrderService.Complete",
+                      symbolKind = "method", startLine = 1, endLine = 4 },
+            },
+            facts = new[] { new { text = "f", evidenceIndexes = new[] { 0 } } },
+            inferences = Array.Empty<object>(),
+            relations = Array.Empty<object>(),
+        });
+        var exception = Assert.Throws<Core.Errors.CodeKnowledgeException>(
+            () => runner.Run("save", saveInput, _repo.Root));
+        Assert.Equal(Core.Errors.CodeKnowledgeException.InvalidArguments, exception.Code);
+    }
+
     public void Dispose()
     {
         _repo.Dispose();

@@ -44,4 +44,18 @@ public sealed class CliOptionsTests
             new HashSet<string> { "resolve", "search", "get", "save", "validate" },
             CliOptions.KnownSubcommands.ToHashSet());
     }
+
+    [Fact]
+    public void Parse_treats_dangling_input_flag_as_subcommand_without_crashing()
+    {
+        // 特性テスト: "--input"の直後に値トークンが無い場合、現状の実装は
+        // (index+1 < args.Length)ガードが偽になりdefaultケースへ落ちて
+        // サブコマンド名として扱われる。ここでは既存の挙動を固定するだけで、
+        // 挙動自体の変更は行わない（別途対応予定の既知の課題）。
+        var options = CliOptions.Parse(["--input"]);
+        Assert.Equal("--input", options.Subcommand);
+        Assert.Null(options.InputPath);
+        Assert.Null(options.Cwd);
+        Assert.False(options.ShowHelp);
+    }
 }

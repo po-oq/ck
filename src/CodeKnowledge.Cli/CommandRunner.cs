@@ -73,16 +73,24 @@ public sealed class CommandRunner(IServiceProvider services)
                CodeKnowledgeException.InvalidArguments, $"'{name}' is required.");
 
     private static int? OptionalInt(JsonElement input, string name)
-        => input.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.Number
-            ? value.GetInt32()
-            : null;
+    {
+        if (!input.TryGetProperty(name, out var value) || value.ValueKind == JsonValueKind.Null)
+            return null;
+        if (value.ValueKind != JsonValueKind.Number)
+            throw new CodeKnowledgeException(
+                CodeKnowledgeException.InvalidArguments, $"'{name}' must be a number.");
+        return value.GetInt32();
+    }
 
     private static IReadOnlyList<string> StringArray(JsonElement input, string name)
     {
         if (!input.TryGetProperty(name, out var value) || value.ValueKind != JsonValueKind.Array)
             throw new CodeKnowledgeException(
                 CodeKnowledgeException.InvalidArguments, $"'{name}' must be a JSON array.");
-        return value.EnumerateArray().Select(item => item.GetString() ?? "").ToList();
+        return value.EnumerateArray().Select(item => item.ValueKind == JsonValueKind.String
+            ? item.GetString() ?? ""
+            : throw new CodeKnowledgeException(
+                CodeKnowledgeException.InvalidArguments, $"'{name}' must be an array of strings.")).ToList();
     }
 
     private static SaveKnowledgeRequest DeserializeSaveRequest(
