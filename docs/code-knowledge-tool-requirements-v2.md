@@ -1601,12 +1601,14 @@ DBファイルは全プロジェクト・全クライアントで共有され、
 
 **利用イメージ:** Agentが過去ナレッジを検索した後に`validate_knowledge`を実行する。`valid`なら必要最小限の確認で回答し、`partially_stale`なら変更箇所だけを調べ直し、`stale`または`unknown`なら実コードを再調査する。
 
-- `validate_knowledge`
-- ファイルハッシュ
-- シンボルハッシュ
-- Git diff
-- `valid / partially_stale / stale / unknown`判定
-- `isWorkingTreeDirty`
+- [x] `validate_knowledge`
+- [x] ファイルハッシュ
+- [x] シンボルハッシュ
+- [x] Git diff
+- [x] `valid / partially_stale / stale / unknown`判定
+- [x] `isWorkingTreeDirty`
+
+**Phase 2は2026-07-14に全自動テスト（218件）、`win-x64` / `osx-arm64`の発行、published-server E2E、ドキュメント整備を完了し、ユーザーが完了と`main`へのマージを承認した。実装・検証手順は`docs/superpowers/plans/2026-07-13-code-knowledge-phase2.md`、利用手順は`README.md`を参照。**
 
 ### Phase 3: 差分保存
 
