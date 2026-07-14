@@ -3,6 +3,7 @@ using CodeKnowledge.Core.Domain;
 using CodeKnowledge.Core.Knowledge;
 using CodeKnowledge.Core.Projects;
 using CodeKnowledge.Core.Search;
+using CodeKnowledge.Core.Validation;
 using ModelContextProtocol.Server;
 
 namespace CodeKnowledge.Mcp.Tools;
@@ -12,7 +13,8 @@ public sealed class CodeKnowledgeTools(
     ResolveProjectUseCase resolveProject,
     SearchKnowledgeUseCase searchKnowledge,
     GetKnowledgeUseCase getKnowledge,
-    SaveKnowledgeUseCase saveKnowledge)
+    SaveKnowledgeUseCase saveKnowledge,
+    ValidateKnowledgeUseCase validateKnowledge)
 {
     [McpServerTool(Name = "resolve_project", UseStructuredContent = true),
         Description("Resolves the current Git repository into a Code Knowledge project. " +
@@ -68,4 +70,16 @@ public sealed class CodeKnowledgeTools(
         => ToolGuard.Execute(() => saveKnowledge.Execute(new SaveKnowledgeRequest(
             workingDirectory, canonicalKey, title, originalQuestion, summary, confidence,
             tags, createdBy, commitHash, evidence, facts, inferences, relations)));
+
+    [McpServerTool(Name = "validate_knowledge", UseStructuredContent = true),
+        Description("Validates the current version of saved knowledge against HEAD or an optional " +
+            "target commit. Returns per-evidence freshness and separately reports uncommitted " +
+            "working-tree changes. Unknown results require direct code inspection.")]
+    public ValidateKnowledgeResult ValidateKnowledge(
+        [Description("Absolute path of the current working directory.")] string workingDirectory,
+        [Description("Knowledge id from search results.")] string knowledgeId,
+        [Description("Optional local commit-ish to validate against. Omit to use current HEAD.")]
+            string? targetCommit = null)
+        => ToolGuard.Execute(() => validateKnowledge.Execute(
+            new ValidateKnowledgeRequest(workingDirectory, knowledgeId, targetCommit)));
 }

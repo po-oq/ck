@@ -73,8 +73,63 @@ public sealed class McpEndToEndTests : IClassFixture<PublishedServerFixture>, ID
         ["relations"] = Array.Empty<object>(),
     };
 
+    private static Dictionary<string, object?> ValidateArguments(
+        string repositoryRoot, string knowledgeId, string? targetCommit = null)
+    {
+        var arguments = new Dictionary<string, object?>
+        {
+            ["workingDirectory"] = repositoryRoot,
+            ["knowledgeId"] = knowledgeId,
+        };
+        if (targetCommit is not null) arguments["targetCommit"] = targetCommit;
+        return arguments;
+    }
+
+    private static Dictionary<string, object?> SaveTwoEvidenceArguments(string repositoryRoot)
+    {
+        var arguments = SaveArguments(repositoryRoot);
+        arguments["evidence"] = new object[]
+        {
+            new Dictionary<string, object?>
+            {
+                ["filePath"] = "src/OrderService.cs",
+                ["symbolName"] = "OrderService.Complete",
+                ["symbolKind"] = "method",
+                ["startLine"] = 1,
+                ["endLine"] = 4,
+            },
+            new Dictionary<string, object?>
+            {
+                ["filePath"] = "src/MailSender.cs",
+                ["symbolName"] = "MailSender.Send",
+                ["symbolKind"] = "method",
+                ["startLine"] = 1,
+                ["endLine"] = 4,
+            },
+        };
+        arguments["facts"] = new object[]
+        {
+            new Dictionary<string, object?>
+            {
+                ["text"] = "CompleteがMailSenderを利用する",
+                ["evidenceIndexes"] = new[] { 0, 1 },
+            },
+        };
+        return arguments;
+    }
+
+    private async Task<long> ReadVersionCountAsync(CancellationToken cancellationToken)
+    {
+        await using var connection = new SqliteConnection(
+            $"Data Source={DatabasePath};Pooling=False");
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(*) FROM knowledge_versions;";
+        return Convert.ToInt64(await command.ExecuteScalarAsync(cancellationToken));
+    }
+
     [Fact]
-    public async Task Lists_all_four_tools()
+    public async Task Lists_all_five_tools()
     {
         using var cts = new CancellationTokenSource(CallTimeout);
         await using var client = await ConnectAsync(cts.Token);
@@ -83,7 +138,110 @@ public sealed class McpEndToEndTests : IClassFixture<PublishedServerFixture>, ID
         Assert.Superset(new HashSet<string>
         {
             "resolve_project", "search_knowledge", "get_knowledge", "save_knowledge",
+            "validate_knowledge",
         }, names);
+    }
+
+    [Fact]
+    public async Task Validate_knowledge_reports_valid_partial_and_stale_for_real_commits()
+    {
+        var baseCommit = _repo.CommitFile("src/MailSender.cs",
+            "class MailSender\n{\n    void Send() { }\n}\n");
+        using var cts = new CancellationTokenSource(CallTimeout);
+        await using var client = await ConnectAsync(cts.Token);
+        var save = await client.CallToolAsync(
+            "save_knowledge", SaveTwoEvidenceArguments(_repo.Root),
+            cancellationToken: cts.Token);
+        Assert.NotEqual(true, save.IsError);
+        var knowledgeId = JsonSerializer.SerializeToElement(save.StructuredContent)
+            .GetProperty("knowledgeId").GetString()!;
+
+        var valid = await client.CallToolAsync(
+            "validate_knowledge", ValidateArguments(_repo.Root, knowledgeId, baseCommit),
+            cancellationToken: cts.Token);
+        Assert.NotEqual(true, valid.IsError);
+        var validJson = JsonSerializer.SerializeToElement(valid.StructuredContent);
+        Assert.Equal("valid", validJson.GetProperty("status").GetString());
+        Assert.Equal(baseCommit, validJson.GetProperty("targetCommit").GetString());
+        Assert.False(validJson.GetProperty("isWorkingTreeDirty").GetBoolean());
+
+        _repo.CommitFile("src/OrderService.cs",
+            "class OrderService\n{\n    void Changed() { }\n}\n", "change first evidence");
+        var partial = await client.CallToolAsync(
+            "validate_knowledge", ValidateArguments(_repo.Root, knowledgeId),
+            cancellationToken: cts.Token);
+        Assert.NotEqual(true, partial.IsError);
+        var partialJson = JsonSerializer.SerializeToElement(partial.StructuredContent);
+        Assert.Equal("partially_stale", partialJson.GetProperty("status").GetString());
+        Assert.Equal(1, partialJson.GetProperty("changedEvidence").GetArrayLength());
+        Assert.Equal(1, partialJson.GetProperty("unchangedEvidence").GetArrayLength());
+
+        _repo.CommitFile("src/MailSender.cs",
+            "class MailSender\n{\n    void Changed() { }\n}\n", "change second evidence");
+        var stale = await client.CallToolAsync(
+            "validate_knowledge", ValidateArguments(_repo.Root, knowledgeId),
+            cancellationToken: cts.Token);
+        Assert.NotEqual(true, stale.IsError);
+        var staleJson = JsonSerializer.SerializeToElement(stale.StructuredContent);
+        Assert.Equal("stale", staleJson.GetProperty("status").GetString());
+        Assert.Equal(2, staleJson.GetProperty("changedEvidence").GetArrayLength());
+        Assert.Equal("reinvestigate_knowledge",
+            staleJson.GetProperty("recommendedAction").GetString());
+    }
+
+    [Fact]
+    public async Task Validate_knowledge_reports_dirty_without_persisting_a_version() // AC-25
+    {
+        var baseCommit = _repo.Run("rev-parse", "HEAD").Trim();
+        using var cts = new CancellationTokenSource(CallTimeout);
+        await using var client = await ConnectAsync(cts.Token);
+        var save = await client.CallToolAsync(
+            "save_knowledge", SaveArguments(_repo.Root), cancellationToken: cts.Token);
+        Assert.NotEqual(true, save.IsError);
+        var knowledgeId = JsonSerializer.SerializeToElement(save.StructuredContent)
+            .GetProperty("knowledgeId").GetString()!;
+        var before = await ReadVersionCountAsync(cts.Token);
+
+        File.WriteAllText(Path.Combine(_repo.Root, "src", "OrderService.cs"),
+            "class OrderService\n{\n    void Dirty() { }\n}\n");
+        var validate = await client.CallToolAsync(
+            "validate_knowledge", ValidateArguments(_repo.Root, knowledgeId, baseCommit),
+            cancellationToken: cts.Token);
+        Assert.NotEqual(true, validate.IsError);
+        var json = JsonSerializer.SerializeToElement(validate.StructuredContent);
+        Assert.Equal("valid", json.GetProperty("status").GetString());
+        Assert.True(json.GetProperty("isWorkingTreeDirty").GetBoolean());
+        Assert.Equal("inspect_dirty_evidence",
+            json.GetProperty("recommendedAction").GetString());
+        Assert.Equal(before, await ReadVersionCountAsync(cts.Token));
+    }
+
+    [Fact]
+    public async Task Validate_knowledge_fails_outside_git_without_persisting()
+    {
+        var outside = Path.Combine(Path.GetTempPath(), $"ck-validate-outside-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(outside);
+        try
+        {
+            using var cts = new CancellationTokenSource(CallTimeout);
+            await using var client = await ConnectAsync(cts.Token);
+            var result = await client.CallToolAsync(
+                "validate_knowledge", ValidateArguments(outside, "knowledge-1"),
+                cancellationToken: cts.Token);
+            Assert.True(result.IsError);
+            var text = string.Join('\n', result.Content.Select(value => value.ToString()));
+            Assert.Contains("git_repository_required: ", text);
+            await using var connection = new SqliteConnection(
+                $"Data Source={DatabasePath};Pooling=False");
+            await connection.OpenAsync(cts.Token);
+            await using var count = connection.CreateCommand();
+            count.CommandText = "SELECT COUNT(*) FROM projects;";
+            Assert.Equal(0L, Convert.ToInt64(await count.ExecuteScalarAsync(cts.Token)));
+        }
+        finally
+        {
+            Directory.Delete(outside, recursive: true);
+        }
     }
 
     [Fact]

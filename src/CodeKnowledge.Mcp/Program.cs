@@ -3,6 +3,7 @@ using CodeKnowledge.Core.Git;
 using CodeKnowledge.Core.Knowledge;
 using CodeKnowledge.Core.Projects;
 using CodeKnowledge.Core.Search;
+using CodeKnowledge.Core.Validation;
 using CodeKnowledge.Infrastructure.Database;
 using CodeKnowledge.Infrastructure.Git;
 using CodeKnowledge.Infrastructure.Stores;
@@ -45,6 +46,7 @@ builder.Services.AddSingleton<ResolveProjectUseCase>();
 builder.Services.AddSingleton<SearchKnowledgeUseCase>();
 builder.Services.AddSingleton<GetKnowledgeUseCase>();
 builder.Services.AddSingleton<SaveKnowledgeUseCase>();
+builder.Services.AddSingleton<ValidateKnowledgeUseCase>();
 builder.Services
     .AddMcpServer()
     .WithStdioServerTransport()
