@@ -1,10 +1,12 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/CodeKnowledge.Cli/CodeKnowledge.Cli.csproj" />
     <Project Path="src/CodeKnowledge.Core/CodeKnowledge.Core.csproj" />
     <Project Path="src/CodeKnowledge.Infrastructure/CodeKnowledge.Infrastructure.csproj" />
     <Project Path="src/CodeKnowledge.Mcp/CodeKnowledge.Mcp.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/CodeKnowledge.Cli.Tests/CodeKnowledge.Cli.Tests.csproj" />
     <Project Path="tests/CodeKnowledge.Core.Tests/CodeKnowledge.Core.Tests.csproj" />
     <Project Path="tests/CodeKnowledge.Infrastructure.Tests/CodeKnowledge.Infrastructure.Tests.csproj" />
     <Project Path="tests/CodeKnowledge.Mcp.Tests/CodeKnowledge.Mcp.Tests.csproj" />
