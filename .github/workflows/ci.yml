@@ -23,9 +23,11 @@ jobs:
           - os: windows-2025
             rid: win-x64
             executable: CodeKnowledge.Mcp.exe
+            cliExecutable: CodeKnowledge.Cli.exe
           - os: macos-15
             rid: osx-arm64
             executable: CodeKnowledge.Mcp
+            cliExecutable: CodeKnowledge.Cli
 
     steps:
       - name: Check out repository
@@ -45,20 +47,29 @@ jobs:
       - name: Publish MCP server
         run: dotnet publish src/CodeKnowledge.Mcp/CodeKnowledge.Mcp.csproj --configuration Release --runtime ${{ matrix.rid }} --self-contained false --no-restore --output artifacts/mcp/${{ matrix.rid }}
 
+      - name: Publish CLI
+        run: dotnet publish src/CodeKnowledge.Cli/CodeKnowledge.Cli.csproj --configuration Release --runtime ${{ matrix.rid }} --self-contained false --no-restore --output artifacts/cli/${{ matrix.rid }}
+
       - name: Verify publish output
         shell: pwsh
         run: |
-          $outputDirectory = "artifacts/mcp/${{ matrix.rid }}"
-          $entryPoint = Join-Path $outputDirectory "${{ matrix.executable }}"
+          $targets = @(
+            @{ Directory = "artifacts/mcp/${{ matrix.rid }}"; EntryPoint = "${{ matrix.executable }}" },
+            @{ Directory = "artifacts/cli/${{ matrix.rid }}"; EntryPoint = "${{ matrix.cliExecutable }}" }
+          )
 
-          if (-not (Test-Path -LiteralPath $entryPoint -PathType Leaf)) {
-            throw "Missing entry point: $entryPoint"
-          }
+          foreach ($target in $targets) {
+            $entryPoint = Join-Path $target.Directory $target.EntryPoint
 
-          $nativeSqlite = Get-ChildItem -LiteralPath $outputDirectory -Recurse -File |
-            Where-Object { $_.Name -match 'e_sqlite3' } |
-            Select-Object -First 1
+            if (-not (Test-Path -LiteralPath $entryPoint -PathType Leaf)) {
+              throw "Missing entry point: $entryPoint"
+            }
 
-          if (-not $nativeSqlite) {
-            throw "Missing native SQLite library matching e_sqlite3 in $outputDirectory"
+            $nativeSqlite = Get-ChildItem -LiteralPath $target.Directory -Recurse -File |
+              Where-Object { $_.Name -match 'e_sqlite3' } |
+              Select-Object -First 1
+
+            if (-not $nativeSqlite) {
+              throw "Missing native SQLite library matching e_sqlite3 in $($target.Directory)"
+            }
           }

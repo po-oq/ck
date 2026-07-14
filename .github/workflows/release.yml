@@ -43,17 +43,23 @@ jobs:
       - name: Publish MCP server
         run: dotnet publish src/CodeKnowledge.Mcp/CodeKnowledge.Mcp.csproj --configuration Release --runtime win-x64 --self-contained false --no-restore --output artifacts/mcp/win-x64
 
+      - name: Publish CLI
+        run: dotnet publish src/CodeKnowledge.Cli/CodeKnowledge.Cli.csproj --configuration Release --runtime win-x64 --self-contained false --no-restore --output artifacts/cli/win-x64
+
       - name: Package Windows release
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path release | Out-Null
           Compress-Archive -Path "artifacts/mcp/win-x64/*" -DestinationPath "release/CodeKnowledge-$env:GITHUB_REF_NAME-win-x64.zip"
+          Compress-Archive -Path "artifacts/cli/win-x64/*" -DestinationPath "release/CodeKnowledge-Cli-$env:GITHUB_REF_NAME-win-x64.zip"
 
       - name: Upload Windows release
         uses: actions/upload-artifact@v7
         with:
           name: release-win-x64
-          path: release/CodeKnowledge-${{ github.ref_name }}-win-x64.zip
+          path: |
+            release/CodeKnowledge-${{ github.ref_name }}-win-x64.zip
+            release/CodeKnowledge-Cli-${{ github.ref_name }}-win-x64.zip
           if-no-files-found: error
           overwrite: false
 
@@ -79,22 +85,33 @@ jobs:
       - name: Publish MCP server
         run: dotnet publish src/CodeKnowledge.Mcp/CodeKnowledge.Mcp.csproj --configuration Release --runtime osx-arm64 --self-contained false --no-restore --output artifacts/mcp/osx-arm64
 
+      - name: Publish CLI
+        run: dotnet publish src/CodeKnowledge.Cli/CodeKnowledge.Cli.csproj --configuration Release --runtime osx-arm64 --self-contained false --no-restore --output artifacts/cli/osx-arm64
+
       - name: Package Mac release
         shell: bash
         run: |
           chmod +x artifacts/mcp/osx-arm64/CodeKnowledge.Mcp
+          chmod +x artifacts/cli/osx-arm64/CodeKnowledge.Cli
           mkdir -p release
           tar -C artifacts/mcp/osx-arm64 -czf \
             "release/CodeKnowledge-$GITHUB_REF_NAME-osx-arm64.tar.gz" .
+          tar -C artifacts/cli/osx-arm64 -czf \
+            "release/CodeKnowledge-Cli-$GITHUB_REF_NAME-osx-arm64.tar.gz" .
           verify="$(mktemp -d)"
           tar -C "$verify" -xzf "release/CodeKnowledge-$GITHUB_REF_NAME-osx-arm64.tar.gz"
           test -x "$verify/CodeKnowledge.Mcp"
+          verify_cli="$(mktemp -d)"
+          tar -C "$verify_cli" -xzf "release/CodeKnowledge-Cli-$GITHUB_REF_NAME-osx-arm64.tar.gz"
+          test -x "$verify_cli/CodeKnowledge.Cli"
 
       - name: Upload Mac release
         uses: actions/upload-artifact@v7
         with:
           name: release-osx-arm64
-          path: release/CodeKnowledge-${{ github.ref_name }}-osx-arm64.tar.gz
+          path: |
+            release/CodeKnowledge-${{ github.ref_name }}-osx-arm64.tar.gz
+            release/CodeKnowledge-Cli-${{ github.ref_name }}-osx-arm64.tar.gz
           if-no-files-found: error
           overwrite: false
 
@@ -123,7 +140,9 @@ jobs:
           cd release
           sha256sum \
             "CodeKnowledge-$GITHUB_REF_NAME-win-x64.zip" \
+            "CodeKnowledge-Cli-$GITHUB_REF_NAME-win-x64.zip" \
             "CodeKnowledge-$GITHUB_REF_NAME-osx-arm64.tar.gz" \
+            "CodeKnowledge-Cli-$GITHUB_REF_NAME-osx-arm64.tar.gz" \
             > SHA256SUMS
           sha256sum --check SHA256SUMS
 
@@ -138,10 +157,12 @@ jobs:
       - name: Create GitHub Release
         shell: bash
         run: |
-          notes="WARNING: CodeKnowledge-$GITHUB_REF_NAME-osx-arm64.tar.gz is unsigned and unnotarized. macOS Gatekeeper may require the README's trusted-release instructions."
+          notes="Archives: CodeKnowledge-*-<rid> is the MCP server; CodeKnowledge-Cli-*-<rid> is the CLI. WARNING: the osx-arm64 archives (CodeKnowledge-$GITHUB_REF_NAME-osx-arm64.tar.gz and CodeKnowledge-Cli-$GITHUB_REF_NAME-osx-arm64.tar.gz) are unsigned and unnotarized. macOS Gatekeeper may require the README's trusted-release instructions."
           gh release create "$GITHUB_REF_NAME" \
             release/CodeKnowledge-$GITHUB_REF_NAME-win-x64.zip \
+            release/CodeKnowledge-Cli-$GITHUB_REF_NAME-win-x64.zip \
             release/CodeKnowledge-$GITHUB_REF_NAME-osx-arm64.tar.gz \
+            release/CodeKnowledge-Cli-$GITHUB_REF_NAME-osx-arm64.tar.gz \
             release/SHA256SUMS --verify-tag --generate-notes \
             --notes "$notes" \
             --title "CodeKnowledge $GITHUB_REF_NAME"
