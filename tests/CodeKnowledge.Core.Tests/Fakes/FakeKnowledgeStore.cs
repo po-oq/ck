@@ -8,6 +8,9 @@ public sealed class FakeKnowledgeStore : IKnowledgeStore
     public List<VersionToSave> SavedVersions { get; } = [];
     public List<KnowledgeSummary> Summaries { get; } = [];
     public KnowledgeDetail? Detail { get; set; }
+    public string? LastGetDetailProjectId { get; private set; }
+    public string? LastGetDetailKnowledgeId { get; private set; }
+    public string? LastGetDetailVersionId { get; private set; }
 
     public SaveVersionResult SaveVersion(VersionToSave version)
     {
@@ -18,7 +21,12 @@ public sealed class FakeKnowledgeStore : IKnowledgeStore
     public IReadOnlyList<KnowledgeSummary> ListSummaries(string projectId) => Summaries;
 
     public KnowledgeDetail? GetDetail(string projectId, string knowledgeId, string? versionId)
-        => Detail;
+    {
+        LastGetDetailProjectId = projectId;
+        LastGetDetailKnowledgeId = knowledgeId;
+        LastGetDetailVersionId = versionId;
+        return Detail;
+    }
 
     public IReadOnlyList<FtsSearchHit> SearchFts(string projectId, string matchExpression, int limit)
         => [];
