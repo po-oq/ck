@@ -68,7 +68,7 @@
 - Consumes: existing `GitCommandRunner.Run` and `RunBytes`.
 - Produces: `ResolveCommit`, `CompareCommits`, `TryReadFileAtCommit`, `GetWorkingTreeChangedPaths`, `GitCommitDiff.ResolveTargetPath`, and `GitCommitDiff.MapOldLineToNew`.
 
-- [ ] **Step 1: Add failing real-Git integration tests**
+- [x] **Step 1: Add failing real-Git integration tests**
 
 Add `using CodeKnowledge.Core.Git;` and append these tests to `GitCliRepositoryTests.cs`:
 
@@ -212,13 +212,13 @@ public void GetWorkingTreeChangedPaths_includes_modified_deleted_and_rename_path
 }
 ```
 
-- [ ] **Step 2: Run the focused integration tests and verify RED**
+- [x] **Step 2: Run the focused integration tests and verify RED**
 
 Run: `dotnet test tests/CodeKnowledge.Infrastructure.Tests --configuration Release --filter FullyQualifiedName~GitCliRepositoryTests`
 
 Expected: compilation fails because the structured Git contracts are absent.
 
-- [ ] **Step 3: Add the Core Git contracts and interface methods**
+- [x] **Step 3: Add the Core Git contracts and interface methods**
 
 Create `GitComparison.cs`:
 
@@ -282,7 +282,7 @@ GitFileSnapshot TryReadFileAtCommit(
 IReadOnlySet<string>? GetWorkingTreeChangedPaths(string repositoryRoot);
 ```
 
-- [ ] **Step 4: Implement the Git output parser**
+- [x] **Step 4: Implement the Git output parser**
 
 Create `GitDiffParser.cs`. Parse `git diff --name-status -z` by status token, keep rename old/new paths, then attach `@@ -old,count +new,count @@` hunks to the same ordered file entry from the patch. Parse `git status --porcelain=v1 -z` by adding both paths for rename/copy entries. Use this implementation:
 
@@ -355,7 +355,7 @@ internal static partial class GitDiffParser
 }
 ```
 
-- [ ] **Step 5: Implement `GitCliRepository` comparison methods**
+- [x] **Step 5: Implement `GitCliRepository` comparison methods**
 
 Add these methods; keep the existing throwing `ReadFileAtCommit` for `save_knowledge`:
 
@@ -400,7 +400,7 @@ public IReadOnlySet<string>? GetWorkingTreeChangedPaths(string root)
 }
 ```
 
-- [ ] **Step 6: Update the Core fake for the expanded interface**
+- [x] **Step 6: Update the Core fake for the expanded interface**
 
 Add commit-aware snapshots, unavailable commits, configurable diff, and nullable dirty paths. Preserve `FilesAtCommit` as the fallback used by Phase 1 save tests:
 
@@ -435,7 +435,7 @@ public IReadOnlySet<string>? GetWorkingTreeChangedPaths(string repositoryRoot)
     => WorkingTreeChangedPaths;
 ```
 
-- [ ] **Step 7: Run Core and Infrastructure tests and verify GREEN**
+- [x] **Step 7: Run Core and Infrastructure tests and verify GREEN**
 
 Run:
 
@@ -446,7 +446,7 @@ dotnet test tests/CodeKnowledge.Infrastructure.Tests --configuration Release --m
 
 Expected: both projects pass; no existing Phase 1 Git or save test regresses.
 
-- [ ] **Step 8: Commit the Git comparison adapter**
+- [x] **Step 8: Commit the Git comparison adapter**
 
 ```bash
 git add src/CodeKnowledge.Core/Git \
@@ -475,7 +475,7 @@ git commit -m "feat: expose structured git freshness data"
 - Consumes: `ContentHasher.ComputeFileHash(string)` and `ContentHasher.ComputeSymbolHash(string, int, int)`.
 - Produces: `ValidationStatus`, `EvidenceValidationStatus`, `ValidationReason`, `RecommendedAction`, result records, `ValidationDecision.Decide`, `SymbolRangeLocator.Find`, and `ContentHasher.CountLines`.
 
-- [ ] **Step 1: Write failing wire-name and aggregate-decision tests**
+- [x] **Step 1: Write failing wire-name and aggregate-decision tests**
 
 Create `ValidationModelsTests.cs` and `ValidationDecisionTests.cs`:
 
@@ -582,7 +582,7 @@ public sealed class ValidationDecisionTests
 }
 ```
 
-- [ ] **Step 2: Run the focused tests and verify RED**
+- [x] **Step 2: Run the focused tests and verify RED**
 
 Run:
 
@@ -593,7 +593,7 @@ dotnet test tests/CodeKnowledge.Core.Tests --configuration Release \
 
 Expected: compilation fails because `CodeKnowledge.Core.Validation` does not exist.
 
-- [ ] **Step 3: Add the complete validation wire models and decision function**
+- [x] **Step 3: Add the complete validation wire models and decision function**
 
 Create `ValidationModels.cs`:
 
@@ -693,7 +693,7 @@ public static class ValidationDecision
 }
 ```
 
-- [ ] **Step 4: Add failing shared line-count and symbol-location tests**
+- [x] **Step 4: Add failing shared line-count and symbol-location tests**
 
 Add to `ContentHasherTests.cs`:
 
@@ -779,13 +779,13 @@ public sealed class SymbolRangeLocatorTests
 }
 ```
 
-- [ ] **Step 5: Run the focused tests and verify RED**
+- [x] **Step 5: Run the focused tests and verify RED**
 
 Run: `dotnet test tests/CodeKnowledge.Core.Tests --configuration Release --filter 'FullyQualifiedName~ContentHasherTests|FullyQualifiedName~SymbolRangeLocatorTests'`
 
 Expected: compilation fails because `CountLines` and `SymbolRangeLocator` do not exist.
 
-- [ ] **Step 6: Implement shared line counting and symbol location**
+- [x] **Step 6: Implement shared line counting and symbol location**
 
 Refactor `ContentHasher` so the public string overload delegates to one normalization path. The internal normalized-line overload lets one `SymbolRangeLocator` reuse normalized lines for every window:
 
@@ -871,13 +871,13 @@ public sealed class SymbolRangeLocator
 }
 ```
 
-- [ ] **Step 7: Run all Core tests and verify GREEN**
+- [x] **Step 7: Run all Core tests and verify GREEN**
 
 Run: `dotnet test tests/CodeKnowledge.Core.Tests --configuration Release --maxcpucount:1 --disable-build-servers`
 
 Expected: zero failures and zero warnings.
 
-- [ ] **Step 8: Commit the pure validation layer**
+- [x] **Step 8: Commit the pure validation layer**
 
 ```bash
 git add src/CodeKnowledge.Core/Validation \
@@ -904,7 +904,7 @@ git commit -m "feat: add freshness validation decisions"
 - Consumes: `ResolveProjectUseCase`, `IKnowledgeStore.GetDetail(projectId, knowledgeId, null)`, Task 1 Git comparison methods, and Task 2 validation decisions.
 - Produces: `ValidateKnowledgeUseCase.Execute(ValidateKnowledgeRequest) : ValidateKnowledgeResult`.
 
-- [ ] **Step 1: Make project scoping observable in `FakeKnowledgeStore`**
+- [x] **Step 1: Make project scoping observable in `FakeKnowledgeStore`**
 
 Add these properties and assignments without changing return behavior:
 
@@ -922,7 +922,7 @@ public KnowledgeDetail? GetDetail(string projectId, string knowledgeId, string? 
 }
 ```
 
-- [ ] **Step 2: Write failing use-case tests for all approved classifications**
+- [x] **Step 2: Write failing use-case tests for all approved classifications**
 
 Create `ValidateKnowledgeUseCaseTests.cs` with the imports, fixture, and helpers below:
 
@@ -1253,13 +1253,13 @@ public void Execute_throws_knowledge_not_found_in_current_project()
 }
 ```
 
-- [ ] **Step 3: Run the use-case tests and verify RED**
+- [x] **Step 3: Run the use-case tests and verify RED**
 
 Run: `dotnet test tests/CodeKnowledge.Core.Tests --configuration Release --filter FullyQualifiedName~ValidateKnowledgeUseCaseTests`
 
 Expected: compilation fails because `ValidateKnowledgeUseCase` does not exist.
 
-- [ ] **Step 4: Implement the single-Evidence validator with per-run snapshot caching**
+- [x] **Step 4: Implement the single-Evidence validator with per-run snapshot caching**
 
 Create `EvidenceValidator.cs`:
 
@@ -1359,7 +1359,7 @@ internal sealed class EvidenceValidator(
 }
 ```
 
-- [ ] **Step 5: Implement orchestration, early unknown results, dirty correlation, and list projection**
+- [x] **Step 5: Implement orchestration, early unknown results, dirty correlation, and list projection**
 
 Create `ValidateKnowledgeUseCase.cs`:
 
@@ -1466,7 +1466,7 @@ public sealed class ValidateKnowledgeUseCase(
 }
 ```
 
-- [ ] **Step 6: Run the focused and complete Core suites**
+- [x] **Step 6: Run the focused and complete Core suites**
 
 Run:
 
@@ -1477,7 +1477,7 @@ dotnet test tests/CodeKnowledge.Core.Tests --configuration Release --maxcpucount
 
 Expected: all classification, dirty, rename, project-scope, argument, and not-found tests pass; the complete Core suite has zero failures.
 
-- [ ] **Step 7: Commit the validation use case**
+- [x] **Step 7: Commit the validation use case**
 
 ```bash
 git add src/CodeKnowledge.Core/Validation/EvidenceValidator.cs \
@@ -1500,7 +1500,7 @@ git commit -m "feat: validate knowledge freshness"
 - Consumes: `ValidateKnowledgeUseCase.Execute` from Task 3 and the existing `ToolGuard` error mapping.
 - Produces: MCP Tool `validate_knowledge(workingDirectory, knowledgeId, targetCommit?)` with structured `ValidateKnowledgeResult` content.
 
-- [ ] **Step 1: Add failing published-server E2E tests**
+- [x] **Step 1: Add failing published-server E2E tests**
 
 In `McpEndToEndTests.cs`, rename `Lists_all_four_tools` to `Lists_all_five_tools` and pin the complete set:
 
@@ -1693,7 +1693,7 @@ public async Task Validate_knowledge_fails_outside_git_without_persisting()
 }
 ```
 
-- [ ] **Step 2: Run the focused MCP tests and verify RED**
+- [x] **Step 2: Run the focused MCP tests and verify RED**
 
 Run:
 
@@ -1705,7 +1705,7 @@ dotnet test tests/CodeKnowledge.Mcp.Tests --configuration Release \
 
 Expected: the published server starts, but the Tool-list and calls fail because `validate_knowledge` is not registered.
 
-- [ ] **Step 3: Add the thin MCP Tool and DI registration**
+- [x] **Step 3: Add the thin MCP Tool and DI registration**
 
 Add `using CodeKnowledge.Core.Validation;` to `CodeKnowledgeTools.cs`, inject `ValidateKnowledgeUseCase validateKnowledge` after `saveKnowledge`, and add:
 
@@ -1729,7 +1729,7 @@ Add `using CodeKnowledge.Core.Validation;` to `Program.cs` and register the use 
 builder.Services.AddSingleton<ValidateKnowledgeUseCase>();
 ```
 
-- [ ] **Step 4: Run focused and complete MCP suites and verify GREEN**
+- [x] **Step 4: Run focused and complete MCP suites and verify GREEN**
 
 Run:
 
@@ -1743,7 +1743,7 @@ dotnet test tests/CodeKnowledge.Mcp.Tests --configuration Release \
 
 Expected: the fifth Tool is listed; valid/partial/stale, explicit target, dirty, repository boundary, and no-version-write assertions pass through the published executable. Existing stdout-sensitive MCP calls continue to pass.
 
-- [ ] **Step 5: Commit the MCP surface and E2E coverage**
+- [x] **Step 5: Commit the MCP surface and E2E coverage**
 
 ```bash
 git add src/CodeKnowledge.Mcp/Tools/CodeKnowledgeTools.cs \
@@ -1763,7 +1763,7 @@ git commit -m "feat: expose knowledge freshness validation tool"
 - Consumes: the exact Tool contract and behavior proven in Tasks 2–4.
 - Produces: operator instructions and Agent rules that make validation mandatory before reusing matching knowledge.
 
-- [ ] **Step 1: Update the current-product overview without rewriting historical Phase 1 records**
+- [x] **Step 1: Update the current-product overview without rewriting historical Phase 1 records**
 
 Replace the current Phase 1-only opening and four-row Tool table with:
 
@@ -1793,7 +1793,7 @@ Replace the live setup sentence with:
 
 Do not alter the dated Phase 1 measurements, client results, artifact hashes/sizes, or Phase 1 completion gate; those are historical observations rather than current Phase 2 verification claims.
 
-- [ ] **Step 2: Add exact usage and decision guidance**
+- [x] **Step 2: Add exact usage and decision guidance**
 
 Add this complete section immediately before `## Agent行動ルール`:
 
@@ -1874,7 +1874,7 @@ Add this complete section immediately before `## Agent行動ルール`:
 検証は新しいナレッジバージョンや検証結果を保存せず、ナレッジを自動更新しない。Phase 2はGit renameと、対応付けたファイル内で正規化後のハッシュが一致するシンボル範囲移動を追跡する。Roslynによる構文解析、意味的なシンボル名変更の追跡、類似ファイルのリポジトリ全体探索は行わない。
 ````
 
-- [ ] **Step 3: Activate the Phase 2 Agent rules**
+- [x] **Step 3: Activate the Phase 2 Agent rules**
 
 Replace the prose immediately below `## Agent行動ルール` with:
 
@@ -1926,7 +1926,7 @@ Phase 2で有効なルールは1〜9、12、13である。
 ```
 ````
 
-- [ ] **Step 4: Run documentation consistency checks**
+- [x] **Step 4: Run documentation consistency checks**
 
 Run:
 
@@ -1937,7 +1937,7 @@ git diff --check
 
 Expected: “4 Tool” remains only inside dated Phase 1 historical records; no active Agent rule still marks Phase 2 behavior as future; `validate_knowledge`, dirty-null behavior, and the Phase 2 limitations are documented; whitespace checks pass.
 
-- [ ] **Step 5: Run the full automated and supported-publish completion gate**
+- [x] **Step 5: Run the full automated and supported-publish completion gate**
 
 Run from the repository root:
 
@@ -1958,14 +1958,14 @@ git status --short --branch
 
 Expected: Core, Infrastructure, and MCP tests all pass; both supported RID publishes exit 0 and contain their executable entry point; no whitespace errors exist. Confirm that `.mcp.json` and `.DS_Store` entries remain untouched and outside every Phase 2 commit.
 
-- [ ] **Step 6: Commit current Phase 2 documentation**
+- [x] **Step 6: Commit current Phase 2 documentation**
 
 ```bash
 git add README.md
 git commit -m "docs: document phase 2 validation workflow"
 ```
 
-- [ ] **Step 7: Perform the final scope audit**
+- [x] **Step 7: Perform the final scope audit**
 
 Run:
 
