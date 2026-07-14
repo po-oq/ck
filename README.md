@@ -93,6 +93,31 @@ C:\Tools\CodeKnowledge\CodeKnowledge.Mcp.exe
 $HOME/Tools/CodeKnowledge/CodeKnowledge.Mcp
 ```
 
+### CLIの発行（Windows 11 x64）
+
+```bash
+dotnet publish src/CodeKnowledge.Cli/CodeKnowledge.Cli.csproj \
+  --configuration Release --runtime win-x64 --self-contained false \
+  --output artifacts/cli/win-x64
+# → artifacts\cli\win-x64\CodeKnowledge.Cli.exe
+```
+
+CLIとMCPで同じナレッジを共有するには、両方に同じ `CODEKNOWLEDGE_DB_PATH` を設定する。
+未設定の場合、DBは各実行ファイル隣の `knowledge.db` になり、MCPとCLIで別々になる。
+
+### CLIをAgentに使わせる設定
+
+`docs/agent-rules/code-knowledge-cli.md` の内容を、利用先リポジトリの次のファイルへ転記する
+（実体は3種。Copilotの2環境は同じファイルを読む）。
+
+| 環境 | ルールファイル |
+|---|---|
+| Cursor | `.cursor/rules/code-knowledge.mdc` |
+| Claude Code | `CLAUDE.md` |
+| GitHub Copilot（VS Code / Visual Studio） | `.github/copilot-instructions.md` |
+
+`CodeKnowledge.Cli.exe` の絶対パスは各環境の配置に合わせて置き換える。
+
 ## 配置とデータベース
 
 ### 既定の配置
