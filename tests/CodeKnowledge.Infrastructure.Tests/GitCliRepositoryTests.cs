@@ -257,6 +257,50 @@ public sealed class GitCliRepositoryTests
     }
 
     [Fact]
+    public void CompareCommits_does_not_execute_configured_diff_helpers()
+    {
+        using var repo = new TestGitRepo();
+        var helperPath = Path.Combine(
+            repo.Root, ".git", OperatingSystem.IsWindows() ? "diff-helper.cmd" : "diff-helper.sh");
+        var textconvSentinel = Path.Combine(repo.Root, ".git", "textconv-was-run");
+        var externalSentinel = Path.Combine(repo.Root, ".git", "external-diff-was-run");
+        File.WriteAllText(helperPath, OperatingSystem.IsWindows()
+            ? "@echo off\r\ntype nul > \"%~1\"\r\nif \"%~3\"==\"\" type \"%~2\"\r\nexit /b 0\r\n"
+            : "#!/bin/sh\n: > \"$1\"\nif [ \"$#\" -eq 2 ]; then cat \"$2\"; fi\n");
+        if (!OperatingSystem.IsWindows())
+        {
+            File.SetUnixFileMode(
+                helperPath,
+                UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        }
+        var helperCommand = $"\"{helperPath.Replace('\\', '/')}\"";
+        repo.Run("config", "diff.textconv-driver.textconv",
+            $"{helperCommand} \"{textconvSentinel.Replace('\\', '/')}\"");
+        repo.Run("config", "diff.external-driver.command",
+            $"{helperCommand} \"{externalSentinel.Replace('\\', '/')}\"");
+        File.WriteAllText(
+            Path.Combine(repo.Root, ".gitattributes"),
+            "textconv.txt diff=textconv-driver\nexternal.txt diff=external-driver\n");
+        File.WriteAllText(Path.Combine(repo.Root, "textconv.txt"), "before textconv\n");
+        File.WriteAllText(Path.Combine(repo.Root, "external.txt"), "before external\n");
+        repo.Run("add", ".gitattributes", "textconv.txt", "external.txt");
+        repo.Run("commit", "-m", "add files with diff drivers");
+        var before = repo.Run("rev-parse", "HEAD").Trim();
+        File.WriteAllText(Path.Combine(repo.Root, "textconv.txt"), "after textconv\n");
+        File.WriteAllText(Path.Combine(repo.Root, "external.txt"), "after external\n");
+        repo.Run("add", "textconv.txt", "external.txt");
+        repo.Run("commit", "-m", "change files with diff drivers");
+        var after = repo.Run("rev-parse", "HEAD").Trim();
+
+        var diff = _repository.CompareCommits(repo.Root, before, after);
+
+        Assert.False(File.Exists(textconvSentinel), "configured textconv helper was executed");
+        Assert.False(File.Exists(externalSentinel), "configured external diff helper was executed");
+        Assert.NotNull(diff);
+        Assert.Equal(2, diff.Files.Count);
+    }
+
+    [Fact]
     public void TryReadFileAtCommit_distinguishes_available_and_missing()
     {
         using var repo = new TestGitRepo();

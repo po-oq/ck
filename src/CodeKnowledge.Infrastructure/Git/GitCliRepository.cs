@@ -90,9 +90,9 @@ public sealed class GitCliRepository : IGitRepository
     public GitCommitDiff? CompareCommits(string root, string baseCommit, string targetCommit)
     {
         var names = GitCommandRunner.RunBytes(root, "diff", "--find-renames",
-            "--name-status", "-z", baseCommit, targetCommit, "--");
+            "--no-textconv", "--no-ext-diff", "--name-status", "-z", baseCommit, targetCommit, "--");
         var patch = GitCommandRunner.Run(root, "diff", "--find-renames",
-            "--unified=0", "--no-color", "--no-ext-diff", baseCommit, targetCommit, "--");
+            "--no-textconv", "--no-ext-diff", "--unified=0", "--no-color", baseCommit, targetCommit, "--");
         return names.ExitCode == 0 && patch.ExitCode == 0
             ? new GitCommitDiff(GitDiffParser.ParseChanges(names.StandardOutput, patch.StandardOutput))
             : null;
